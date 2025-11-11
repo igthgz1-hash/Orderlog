@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามการสั่งสินค้าจากจีน</title>
+    <!-- โหลด Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- โหลดฟอนต์ Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ใช้ฟอนต์ Sarabun สำหรับภาษาไทย และ Inter เป็นฟอนต์เริ่มต้น */
+        body {
+            font-family: 'Sarabun', 'Inter', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6, th, button {
+            font-family: 'Sarabun', 'Inter', sans-serif;
+            font-weight: 600; /* ทำให้หัวข้อเด่นขึ้น */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- ส่วนหัวของหน้า -->
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <h1 class="text-3xl font-bold text-gray-900">
+                ระบบติดตามการสั่งสินค้าจากจีน
+            </h1>
+            <!-- ลบ UserIdDisplay ออกจากส่วนหัว -->
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto py-8 sm:px-6 lg:px-8">
+        
+        <!-- ฟอร์มสำหรับเพิ่มรายการสั่งซื้อ -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 sm:p-8 mb-10">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">เพิ่มรายการสั่งซื้อใหม่</h2>
+            <form id="addOrderForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- รุ่นที่สั่ง -->
+                <div>
+                    <label for="model" class="block text-sm font-medium text-gray-700 mb-1">รุ่นที่สั่ง</label>
+                    <input type="text" id="model" name="model" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="เช่น เคสโทรศัพท์, หูฟัง XYZ">
+                </div>
+
+                <!-- วันที่สั่ง -->
+                <div>
+                    <label for="orderDate" class="block text-sm font-medium text-gray-700 mb-1">วันที่สั่ง</label>
+                    <input type="date" id="orderDate" name="orderDate" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+                <!-- กำหนดส่ง -->
+                <div>
+                    <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">กำหนดส่ง (โดยประมาณ)</label>
+                    <input type="date" id="dueDate" name="dueDate" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+                <!-- ราคาต่อตัว -->
+                <div>
+                    <label for="unitPrice" class="block text-sm font-medium text-gray-700 mb-1">ราคาต่อตัว (บาท)</label>
+                    <input type="number" id="unitPrice" name="unitPrice" min="0" step="0.01" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="0.00">
+                </div>
+
+                <!-- ค่าส่งรวม -->
+                <div>
+                    <label for="shippingCost" class="block text-sm font-medium text-gray-700 mb-1">ค่าส่งรวม (บาท)</label>
+                    <input type="number" id="shippingCost" name="shippingCost" min="0" step="0.01" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="0.00">
+                </div>
+
+                <!-- ปุ่มเพิ่มรายการ -->
+                <div class="md:col-span-2 lg:col-span-1 flex items-end">
+                    <button type="submit" id="submitButton"
+                            class="w-full bg-gray-900 text-white px-4 py-2.5 rounded-lg shadow-sm
+                                   font-medium hover:bg-gray-700 focus:outline-none focus:ring-2
+                                   focus:ring-gray-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                        เพิ่มรายการสั่งซื้อ
+                    </button>
+                </div>
+            </form>
+            <p id="formError" class="text-red-500 text-sm mt-2"></p>
+        </div>
+
+        <!-- ส่วนหัวของตาราง และปุ่มสลับโหมด -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+            <h2 class="text-xl font-semibold text-gray-800">รายการสั่งซื้อ</h2>
+            
+            <!-- ปุ่มสลับโหมด -->
+            <div id="viewToggle" class="flex space-x-2 bg-gray-200 p-1 rounded-lg mt-3 sm:mt-0">
+                <button id="showActiveBtn" 
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200
+                               bg-white text-blue-600 shadow-sm">
+                    ที่ใช้งาน
+                </button>
+                <button id="showHiddenBtn"
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200
+                               text-gray-600 hover:text-gray-900">
+                    ที่ซ่อนไว้
+                </button>
+            </div>
+        </div>
+
+        <!-- ตารางแสดงผลข้อมูล -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">รุ่นที่สั่ง</th>
+                            <th scope="col" class="px-6 py-3 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">วันที่สั่ง</th>
+                            <th scope="col" class="px-6 py-3 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">กำหนดส่ง</th>
+                            <th scope="col" class="px-6 py-3 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">วันที่คาดว่าจะถึงไทย</th>
+                            <th scope="col" class="px-6 py-3 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">ราคาต่อตัว</th>
+                            <th scope="col" class="px-6 py-3 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">ค่าส่งรวม</th>
+                            <th scope="col" class="px-6 py-3 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Loading state -->
+                        <tr id="loadingState">
+                            <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                                <svg class="animate-spin h-5 w-5 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span class="mt-2 block">กำลังโหลดข้อมูล...</span>
+                            </td>
+                        </tr>
+                        <!-- Empty state -->
+                        <tr id="emptyState" class="hidden">
+                            <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                                ยังไม่มีรายการสั่งซื้อ
+                            </td>
+                        </tr>
+                        <!-- ข้อมูลจะถูกเพิ่มที่นี่โดย JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ==== NEW: Gemini Modal ==== -->
+    <div id="geminiModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-8 m-4 max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-xl font-semibold text-gray-900">✨ ร่างอีเมลติดตามสินค้า</h3>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Content -->
+            <div id="modalContent" class="overflow-y-auto min-h-[250px] flex-grow">
+                
+                <!-- Loading spinner -->
+                <div id="modalLoading" class="flex flex-col items-center justify-center h-full text-center p-4">
+                    <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-3 text-gray-600">Gemini กำลังช่วยร่างอีเมลให้คุณ...</p>
+                </div>
+                
+                <!-- Result -->
+                <div id="modalResult" class="hidden">
+                    <p class="text-sm text-gray-600 mb-2">นี่คืออีเมลฉบับร่างที่คุณสามารถคัดลอกไปใช้ได้ครับ:</p>
+                    <textarea id="geminiResultText" readonly 
+                              class="w-full h-64 p-3 border border-gray-200 rounded-lg bg-gray-50 text-sm
+                                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              aria-label="อีเมลฉบับร่าง"></textarea>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <button id="copyEmailBtn" 
+                        class="w-full bg-blue-600 text-white px-4 py-2.5 rounded-lg shadow-sm
+                               font-medium hover:bg-blue-700 focus:outline-none focus:ring-2
+                               focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out
+                               disabled:opacity-50"
+                        disabled>
+                    คัดลอกข้อความ
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ==== END: Gemini Modal ==== -->
+
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            addDoc, 
+            deleteDoc,
+            updateDoc, // เพิ่ม updateDoc
+            onSnapshot, 
+            collection, 
+            query,
+            where, // เพิ่ม where
+            Timestamp,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL VARIABLES ---
+        // (These variables are provided by the environment)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+  apiKey: "AIzaSyBpYNIEnI5NaHu4tbGhUr1g3OuVR6xvZ1M",
+  authDomain: "china-order-log.firebaseapp.com",
+  projectId: "china-order-log",
+  storageBucket: "china-order-log.firebasestorage.app",
+  messagingSenderId: "573597049817",
+  appId: "1:573597049817:web:2e5817bbac2b1a95106fc8"
+};
+
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- DOM ELEMENTS ---
+        const addOrderForm = document.getElementById('addOrderForm');
+        const submitButton = document.getElementById('submitButton');
+        const orderTableBody = document.getElementById('orderTableBody');
+        const loadingState = document.getElementById('loadingState');
+        const emptyState = document.getElementById('emptyState');
+        const formError = document.getElementById('formError');
+        // const userIdDisplay = document.getElementById('userIdDisplay'); // ลบออก
+        const showActiveBtn = document.getElementById('showActiveBtn');
+        const showHiddenBtn = document.getElementById('showHiddenBtn');
+
+        // --- NEW: Modal DOM Elements ---
+        const geminiModal = document.getElementById('geminiModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalContent = document.getElementById('modalContent');
+        const modalLoading = document.getElementById('modalLoading');
+        const modalResult = document.getElementById('modalResult');
+        const geminiResultText = document.getElementById('geminiResultText');
+        const copyEmailBtn = document.getElementById('copyEmailBtn');
+
+
+        // --- FIREBASE INITIALIZATION ---
+        let app, auth, db;
+        let userId; // To store the current user's ID
+        let ordersCollectionRef; // To store the collection reference
+        let unsubscribeOrders; // To stop the listener
+        let currentView = "active"; // สถานะการดูปัจจุบัน
+        let currentOrderCache = []; // --- NEW: Cache for order data ---
+
+        // Function to initialize Firebase and Auth
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Enable debug logging
+                setLogLevel('Debug');
+
+                // Set up authentication listener
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        console.log("User is authenticated:", user.uid);
+                        userId = user.uid;
+                        // userIdDisplay.textContent = userId; // ลบออก
+
+                        // --- SETUP FIRESTORE ---
+                        // เปลี่ยนไปใช้ PUBLIC collection path
+                        const collPath = `/artifacts/${appId}/public/data/china_orders_public`;
+                        ordersCollectionRef = collection(db, collPath);
+
+                        // Start listening for real-time updates
+                        setupOrderListener(currentView); // ใช้ currentView เริ่มต้น
+                        
+                    } else {
+                        console.log("User is not authenticated. Attempting sign-in...");
+                        // If user is not signed in, try to sign in
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                loadingState.innerHTML = `<td colspan="7" class="px-6 py-10 text-center text-red-500">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล</td>`;
+            }
+        }
+
+        // --- FIRESTORE FUNCTIONS ---
+
+        // 1. Setup real-time listener for orders
+        function setupOrderListener(status) {
+            // อัปเดตสถานะการดู
+            currentView = status;
+            updateToggleButtons();
+
+            // Detach any existing listener
+            if (unsubscribeOrders) {
+                unsubscribeOrders();
+            }
+
+            // [FIX] เปลี่ยนจากการกรองด้วย 'where' เป็นการดึงข้อมูลทั้งหมด
+            // เพื่อหลีกเลี่ยงปัญหา Firestore Index ที่อาจเกิดขึ้นกับผู้ใช้ใหม่
+            const q = query(ordersCollectionRef); // <--- ลบ 'where' ออก
+            
+            unsubscribeOrders = onSnapshot(q, (querySnapshot) => {
+                const allOrders = [];
+                querySnapshot.forEach((doc) => {
+                    allOrders.push({ id: doc.id, ...doc.data() });
+                });
+
+                // --- NEW: Update cache ---
+                currentOrderCache = [...allOrders];
+
+                // [FIX] กรองข้อมูลใน JavaScript (Client-side) แทน
+                const orders = allOrders.filter(order => order.status === currentView);
+
+                // Sort data in memory (client-side) by order date, descending
+                orders.sort((a, b) => {
+                    const dateA = a.orderDate ? new Date(a.orderDate) : new Date(0);
+                    const dateB = b.orderDate ? new Date(b.orderDate) : new Date(0);
+                    return dateB - dateA; // Newest first
+                });
+
+                renderOrders(orders);
+            }, (error) => {
+                console.error("Error listening to orders:", error);
+                loadingState.innerHTML = `<td colspan="7" class="px-6 py-10 text-center text-red-500">เกิดข้อผิดพลาดในการโหลดข้อมูล</td>`;
+            });
+        }
+
+        // 2. Render orders in the table
+        function renderOrders(orders) {
+            // Clear current table body
+            orderTableBody.innerHTML = '';
+            
+            if (orders.length === 0) {
+                orderTableBody.appendChild(emptyState);
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                orders.forEach(order => {
+                    const tr = document.createElement('tr');
+                    tr.classList.add('hover:bg-gray-50');
+
+                    // Format numbers as Thai Baht
+                    const unitPriceFormatted = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(order.unitPrice || 0);
+                    const shippingCostFormatted = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(order.shippingCost || 0);
+
+                    // Format dates (YYYY-MM-DD to DD/MM/YYYY)
+                    const orderDateFormatted = formatDate(order.orderDate);
+                    const dueDateFormatted = formatDate(order.dueDate);
+
+                    // --- NEW CALCULATION ---
+                    // คำนวณช่วงวันที่คาดว่าจะถึงไทย
+                    const arrivalDateRange = calculateArrivalDateRange(order.dueDate);
+                    // --- END NEW CALCULATION ---
+
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${order.model}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${orderDateFormatted}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${dueDateFormatted}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">${arrivalDateRange}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right">${unitPriceFormatted}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right">${shippingCostFormatted}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-4">
+                            ${getManageButtons(order.id)}
+                        </td>
+                    `;
+                    orderTableBody.appendChild(tr);
+                });
+            }
+        }
+
+        // 3. Handle Add Order
+        async function handleAddOrder(e) {
+            e.preventDefault();
+            formError.textContent = '';
+            
+            if (!userId || !ordersCollectionRef) {
+                formError.textContent = "ยังไม่ได้เชื่อมต่อกับฐานข้อมูล กรุณารอสักครู่";
+                return;
+            }
+
+            // Get form data
+            const formData = new FormData(addOrderForm);
+            const model = formData.get('model');
+            const orderDate = formData.get('orderDate');
+            const dueDate = formData.get('dueDate');
+            const unitPrice = parseFloat(formData.get('unitPrice'));
+            const shippingCost = parseFloat(formData.get('shippingCost'));
+
+            // Basic validation
+            if (!model || !orderDate || !dueDate || isNaN(unitPrice) || isNaN(shippingCost)) {
+                formError.textContent = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
+                return;
+            }
+
+            // Disable button to prevent double submission
+            submitButton.disabled = true;
+            submitButton.textContent = 'กำลังเพิ่ม...';
+
+            try {
+                const newOrder = {
+                    model: model,
+                    orderDate: orderDate,
+                    dueDate: dueDate,
+                    unitPrice: unitPrice,
+                    shippingCost: shippingCost,
+                    status: "active", // เพิ่ม status เริ่มต้นเป็น active
+                    createdAt: Timestamp.now() // Add a timestamp
+                };
+
+                // Add document to Firestore
+                await addDoc(ordersCollectionRef, newOrder);
+                
+                // Clear the form
+                addOrderForm.reset();
+
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                formError.textContent = "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
+            } finally {
+                // Re-enable button
+                submitButton.disabled = false;
+                submitButton.textContent = 'เพิ่มรายการสั่งซื้อ';
+            }
+        }
+
+        // 4. Handle Table Actions (Hide and Delete)
+        async function handleTableActions(e) {
+            const button = e.target;
+            const docId = button.dataset.id;
+            
+            if (!docId || !userId) return;
+
+            // --- NEW: Handle DRAFT EMAIL action ---
+            if (button.classList.contains('email-btn')) {
+                handleDraftEmail(docId);
+            }
+
+            // --- Handle HIDE action ---
+            if (button.classList.contains('hide-btn')) {
+                button.disabled = true;
+                button.textContent = 'กำลังซ่อน...';
+                
+                try {
+                    // เปลี่ยนไปใช้ ordersCollectionRef ที่ถูกต้อง
+                    const docRef = doc(ordersCollectionRef, docId);
+                    // อัปเดต status เป็น 'hidden'
+                    await updateDoc(docRef, {
+                        status: "hidden"
+                    });
+                    // onSnapshot จะอัปเดต UI ให้อัตโนมัติ เพราะ query กรองไว้แล้ว
+                } catch (error) {
+                    console.error("Error hiding document: ", error);
+                    button.textContent = 'ซ่อน (ผิดพลาด)';
+                    button.disabled = false;
+                }
+            }
+
+            // --- Handle UNHIDE action ---
+            if (button.classList.contains('unhide-btn')) {
+                button.disabled = true;
+                button.textContent = 'กำลังนำกลับ...';
+                
+                try {
+                    const docRef = doc(ordersCollectionRef, docId);
+                    // อัปเดต status กลับเป็น 'active'
+                    await updateDoc(docRef, {
+                        status: "active"
+                    });
+                    // onSnapshot จะอัปเดต UI ให้อัตโนมัติ
+                } catch (error) {
+                    console.error("Error unhiding document: ", error);
+                    button.textContent = 'นำกลับ (ผิดพลาด)';
+                    button.disabled = false;
+                }
+            }
+
+            // --- Handle DELETE action ---
+            if (button.classList.contains('delete-btn')) {
+                button.disabled = true;
+                button.textContent = 'กำลังลบ...';
+
+                try {
+                    // เปลี่ยนไปใช้ ordersCollectionRef ที่ถูกต้อง
+                    const docRef = doc(ordersCollectionRef, docId);
+                    await deleteDoc(docRef);
+                    // onSnapshot จะอัปเดต UI ให้อัตโนมัติ
+                } catch (error) {
+                    console.error("Error deleting document: ", error);
+                    button.textContent = 'ลบ (ผิดพลาด)';
+                    button.disabled = false;
+                }
+            }
+        }
+        
+        // --- HELPER FUNCTIONS ---
+
+        // สลับปุ่ม "จัดการ" ตามโหมดที่ดู
+        function getManageButtons(orderId) {
+            if (currentView === 'hidden') {
+                // โหมดดูรายการที่ซ่อน: แสดงปุ่ม "นำกลับ" และ "ลบ"
+                return `
+                    <button data-id="${orderId}" class="unhide-btn text-green-600 hover:text-green-900 font-medium transition duration-150 ease-in-out">
+                        นำกลับ
+                    </button>
+                    <button data-id="${orderId}" class="delete-btn text-gray-500 hover:text-red-600 font-medium transition duration-150 ease-in-out">
+                        ลบ
+                    </button>
+                `;
+            } else {
+                // โหมดปกติ: แสดงปุ่ม "ร่างอีเมล", "ซ่อน" และ "ลบ"
+                return `
+                    <button data-id="${orderId}" class="email-btn text-purple-600 hover:text-purple-900 font-medium transition duration-150 ease-in-out">
+                        ✨ ร่างอีเมล
+                    </button>
+                    <button data-id="${orderId}" class="hide-btn text-blue-600 hover:text-blue-900 font-medium transition duration-150 ease-in-out">
+                        ซ่อน
+                    </button>
+                    <button data-id="${orderId}" class="delete-btn text-gray-500 hover:text-red-600 font-medium transition duration-150 ease-in-out">
+                        ลบ
+                    </button>
+                `;
+            }
+        }
+
+        // อัปเดตสไตล์ของปุ่มสลับโหมด
+        function updateToggleButtons() {
+            if (currentView === 'active') {
+                showActiveBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+                showActiveBtn.classList.remove('text-gray-600', 'hover:text-gray-900');
+                
+                showHiddenBtn.classList.add('text-gray-600', 'hover:text-gray-900');
+                showHiddenBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+            } else {
+                showActiveBtn.classList.add('text-gray-600', 'hover:text-gray-900');
+                showActiveBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+
+                showHiddenBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+                showHiddenBtn.classList.remove('text-gray-600', 'hover:text-gray-900');
+            }
+        }
+        
+        // --- NEW HELPER FUNCTION ---
+        // Format a Date object to "DD/MM/YYYY"
+        function formatDateObject(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return '-';
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const year = dateObj.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        // --- NEW HELPER FUNCTION ---
+        // Calculate estimated arrival range
+        function calculateArrivalDateRange(dueDateString) {
+            if (!dueDateString) return '-';
+            try {
+                // new Date() handles YYYY-MM-DD correctly, accounting for timezones
+                const baseDate = new Date(dueDateString);
+                
+                // Add 12 days
+                const arrivalMin = new Date(baseDate.getTime());
+                arrivalMin.setDate(arrivalMin.getDate() + 12);
+                
+                // Add 14 days
+                const arrivalMax = new Date(baseDate.getTime());
+                arrivalMax.setDate(arrivalMax.getDate() + 14);
+
+                // ส่งคืนเป็นช่วงวันที่ "DD/MM/YYYY - DD/MM/YYYY"
+                return `${formatDateObject(arrivalMin)} - ${formatDateObject(arrivalMax)}`;
+
+            } catch (e) {
+                console.error("Error calculating arrival date:", e);
+                return '-';
+            }
+        }
+
+        // --- NEW HELPER FUNCTIONS for Gemini Modal ---
+
+        // 1. Handle "Draft Email" click
+        async function handleDraftEmail(docId) {
+            const order = currentOrderCache.find(o => o.id === docId);
+            if (!order) {
+                console.error("Order data not found in cache.");
+                return;
+            }
+
+            // Show modal in loading state
+            showModal();
+
+            try {
+                // Format data for the prompt
+                const orderDate = formatDate(order.orderDate);
+                const dueDate = formatDate(order.dueDate);
+
+                // Create the prompt for Gemini
+                const prompt = `
+กรุณาร่างอีเมลเป็นภาษาไทย ในโทนสุภาพ เป็นทางการ เพื่อส่งหาซัพพลายเออร์ (ร้านค้า) ในจีน เพื่อติดตามสถานะการสั่งซื้อ
+
+ข้อมูลการสั่งซื้อ:
+- สินค้า: ${order.model}
+- วันที่สั่งซื้อ: ${orderDate}
+- กำหนดส่งเดิม (หากมี): ${dueDate}
+
+ช่วยสอบถามว่าสินค้าอยู่ในขั้นตอนไหน และจะจัดส่งได้เมื่อไหร่
+กรุณาขึ้นต้นอีเมลด้วย "เรียน ร้านค้า [ชื่อร้านค้า/ซัพพลายเออร์]," และลงท้ายด้วย "ขอบคุณครับ/ค่ะ"
+`;
+
+                // Call the Gemini API
+                const emailText = await callGeminiAPI(prompt);
+                
+                // Show the result
+                showModalResult(emailText);
+
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                showModalResult("ขออภัย เกิดข้อผิดพลาดในการติดต่อ Gemini API:\n\n" + error.message, true);
+            }
+        }
+        
+        // 2. Show the modal
+        function showModal() {
+            modalLoading.classList.remove('hidden');
+            modalResult.classList.add('hidden');
+            copyEmailBtn.disabled = true;
+            geminiModal.classList.remove('hidden');
+        }
+
+        // 3. Hide the modal
+        function hideModal() {
+            geminiModal.classList.add('hidden');
+        }
+
+        // 4. Show the result in the modal
+        function showModalResult(text, isError = false) {
+            geminiResultText.value = text;
+            modalLoading.classList.add('hidden');
+            modalResult.classList.remove('hidden');
+            
+            if (isError) {
+                geminiResultText.classList.add('text-red-500');
+                copyEmailBtn.disabled = true;
+            } else {
+                geminiResultText.classList.remove('text-red-500');
+                copyEmailBtn.disabled = false;
+            }
+        }
+
+        // 5. Copy text to clipboard
+        function copyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";  // Make it invisible
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                copyEmailBtn.textContent = 'คัดลอกแล้ว!';
+                setTimeout(() => {
+                    copyEmailBtn.textContent = 'คัดลอกข้อความ';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                copyEmailBtn.textContent = 'คัดลอกไม่สำเร็จ';
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        // 6. Call Gemini API (gemini-2.5-flash-preview-09-2025)
+        async function callGeminiAPI(prompt, retries = 3, delay = 1000) {
+            const apiKey = ""; // API key is handled by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("Invalid response structure from Gemini API.");
+                    }
+                } catch (error) {
+                    console.error(`Attempt ${i + 1} failed:`, error.message);
+                    if (i === retries - 1) { // Last retry
+                        throw error; // Re-throw the last error
+                    }
+                    // Wait with exponential backoff
+                    await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+                }
+            }
+        }
+
+        // --- END: NEW HELPER FUNCTIONS ---
+
+        // Format date from "YYYY-MM-DD" to "DD/MM/YYYY"
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            try {
+                const [year, month, day] = dateString.split('-');
+                if (!year || !month || !day) return dateString; // Return original if format is unexpected
+                return `${day}/${month}/${year}`;
+            } catch (e) {
+                return dateString; // Return original on error
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        
+        // Start initialization on DOM load
+        document.addEventListener('DOMContentLoaded', initializeFirebase);
+        
+        // Listen for form submission
+        addOrderForm.addEventListener('submit', handleAddOrder);
+        
+        // ใช้ event delegation สำหรับปุ่ม hide และ delete
+        orderTableBody.addEventListener('click', handleTableActions);
+
+        // --- NEW EVENT LISTENERS for Toggle Buttons ---
+        showActiveBtn.addEventListener('click', () => {
+            if (currentView !== 'active') {
+                setupOrderListener('active');
+            }
+        });
+
+        showHiddenBtn.addEventListener('click', () => {
+            if (currentView !== 'hidden') {
+                setupOrderListener('hidden');
+            }
+        });
+
+        // --- NEW EVENT LISTENERS for Modal ---
+        closeModalBtn.addEventListener('click', hideModal);
+        copyEmailBtn.addEventListener('click', () => {
+            copyToClipboard(geminiResultText.value);
+        });
+
+    </script>
+</body>
+</html>
