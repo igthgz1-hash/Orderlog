@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """Simple LAN file drop: any phone on the same Wi-Fi can send files to this
-PC through a normal web browser — no app, no undocumented protocols.
+PC (and this PC can send files back) through a normal web browser — no app,
+no undocumented protocols.
 
 Unlike airdrop-tool/ (which reimplements Apple's AirDrop wire protocol and
 has an unresolved BLE discovery issue), this works with any phone — iPhone,
 Samsung, anything with a browser — because it's just plain HTTP and an HTML
-form. Scan the printed QR code (or type the URL) on the phone, pick files,
-upload.
+form. Scan the printed QR code (or type the URL) on the phone:
+  - to send TO this PC: pick files in the upload form
+  - to receive FROM this PC: drop files into --send-dir, they show up as
+    download links on the same page
 """
 import argparse
 import html
+import mimetypes
 import re
 import socket
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import unquote
 
 DEFAULT_PORT = 8000
 
@@ -46,6 +51,8 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 </form>
 <h2>ไฟล์ที่ได้รับแล้ว</h2>
 <ul>{file_list}</ul>
+<h2>ไฟล์จาก PC (แตะเพื่อดาวน์โหลด)</h2>
+<ul>{send_list}</ul>
 </body>
 </html>
 """
@@ -97,6 +104,8 @@ class DropHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             self._serve_page()
+        elif self.path.startswith("/download/"):
+            self._handle_download()
         else:
             self.send_error(404)
 
@@ -110,10 +119,18 @@ class DropHandler(BaseHTTPRequestHandler):
         files = sorted(self.server.out_dir.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True) \
             if self.server.out_dir.exists() else []
         file_list = "".join(f"<li>{html.escape(f.name)}</li>" for f in files) or "<li>ยังไม่มีไฟล์</li>"
+
+        send_files = sorted(p for p in self.server.send_dir.glob("*") if p.is_file()) \
+            if self.server.send_dir.exists() else []
+        send_list = "".join(
+            f'<li><a href="/download/{html.escape(f.name)}">{html.escape(f.name)}</a></li>' for f in send_files
+        ) or "<li>ยังไม่มีไฟล์ให้ดาวน์โหลด</li>"
+
         page = PAGE_TEMPLATE.format(
             computer_name=html.escape(self.server.computer_name),
             status=status_html,
             file_list=file_list,
+            send_list=send_list,
         )
         body = page.encode("utf-8")
         self.send_response(200)
@@ -121,6 +138,32 @@ class DropHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _handle_download(self):
+        requested_name = unquote(self.path[len("/download/"):])
+        # Resolve strictly inside send_dir — reject any path-traversal attempt
+        # (e.g. "../../etc/passwd") regardless of how it's encoded.
+        safe_name = Path(requested_name).name
+        file_path = (self.server.send_dir / safe_name).resolve()
+        send_dir_resolved = self.server.send_dir.resolve()
+        if send_dir_resolved not in file_path.parents or not file_path.is_file():
+            self.send_error(404)
+            return
+
+        content_type, _ = mimetypes.guess_type(file_path.name)
+        content_type = content_type or "application/octet-stream"
+        data = file_path.read_bytes()
+
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        # Images: serve inline so Safari opens them directly (long-press to
+        # save to Photos in one step). Everything else: force a download so
+        # it lands in the phone's Files/Downloads.
+        if not content_type.startswith("image/"):
+            self.send_header("Content-Disposition", f'attachment; filename="{safe_name}"')
+        self.end_headers()
+        self.wfile.write(data)
 
     def _handle_upload(self):
         content_type = self.headers.get("Content-Type", "")
@@ -143,10 +186,11 @@ class DropHandler(BaseHTTPRequestHandler):
 
 
 class DropServer(ThreadingHTTPServer):
-    def __init__(self, address, handler, computer_name: str, out_dir: Path):
+    def __init__(self, address, handler, computer_name: str, out_dir: Path, send_dir: Path):
         super().__init__(address, handler)
         self.computer_name = computer_name
         self.out_dir = out_dir
+        self.send_dir = send_dir
 
     def save_file(self, name: str, data: bytes) -> Path:
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -175,17 +219,23 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--name", default=socket.gethostname(), help="ชื่อเครื่องที่แสดงบนหน้าเว็บ")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
-    parser.add_argument("--out-dir", default=str(Path.home() / "LanDropReceived"))
+    parser.add_argument("--out-dir", default=str(Path.home() / "LanDropReceived"),
+                         help="Where files sent FROM the phone are saved")
+    parser.add_argument("--send-dir", default=str(Path.home() / "LanDropToSend"),
+                         help="Drop files here to make them downloadable BY the phone")
     args = parser.parse_args()
 
     ip = local_ip()
     out_dir = Path(args.out_dir)
+    send_dir = Path(args.send_dir)
+    send_dir.mkdir(parents=True, exist_ok=True)
     url = f"http://{ip}:{args.port}/"
 
-    httpd = DropServer(("0.0.0.0", args.port), DropHandler, args.name, out_dir)
+    httpd = DropServer(("0.0.0.0", args.port), DropHandler, args.name, out_dir, send_dir)
 
     print(f"[landrop] receiving as '{args.name}' at {url}")
-    print(f"[landrop] files will be saved to {out_dir}")
+    print(f"[landrop] files sent from phone will be saved to {out_dir}")
+    print(f"[landrop] put files here to let the phone download them: {send_dir}")
     print("[landrop] scan this QR code on your phone (must be on the same Wi-Fi network):")
     print_qr(url)
     print(f"[landrop] started {datetime.now().isoformat(timespec='seconds')} — Ctrl+C to stop")
