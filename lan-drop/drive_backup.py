@@ -1,9 +1,14 @@
 # Copyright (c) 2026 Sevastopol. All Rights Reserved. See ../LICENSE.
-"""Optional Google Drive backup for files received via LAN Drop.
+"""Optional Google Drive backup for files transferred via LAN Drop.
 
-Every file the phone sends to this PC also gets uploaded (in the
-background, so it never slows down or blocks the upload response) to a
-folder in the Google Drive account you sign in as during one-time setup.
+Files received from the phone, and files the phone downloads from this PC,
+get uploaded (in the background, so it never slows down or blocks the HTTP
+response) into subfolders of a folder in the Google Drive account you sign
+in as during one-time setup:
+
+    <folder_name>/
+      Received/   <- files the phone sent to this PC
+      Sent/       <- files this PC sent to the phone
 
 Setup (see README.md "Google Drive backup" section for the full walkthrough):
   1. In Google Cloud Console, create a project and enable the Drive API.
@@ -16,11 +21,15 @@ Setup (see README.md "Google Drive backup" section for the full walkthrough):
 Only requires the "drive.file" scope: this app can only see/manage files
 it creates itself, never your existing Drive contents.
 """
+import mimetypes
 import sys
 import threading
 from pathlib import Path
 
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+
+RECEIVED = "Received"
+SENT = "Sent"
 
 
 class DriveBackup:
@@ -36,7 +45,9 @@ class DriveBackup:
         self.folder_name = folder_name
         self.delete_after_upload = delete_after_upload
         self._service = None
-        self._folder_id = None
+        self._root_folder_id = None
+        self._subfolder_ids = {}
+        self._uploaded_once = set()
         self._lock = threading.Lock()
 
     def _get_service(self):
@@ -71,47 +82,83 @@ class DriveBackup:
 
         return build("drive", "v3", credentials=creds)
 
-    def _ensure_folder(self, service) -> str:
-        if self._folder_id:
-            return self._folder_id
-        query = (
-            f"name='{self.folder_name}' and mimeType='application/vnd.google-apps.folder' "
-            "and trashed=false"
-        )
+    def _find_or_create_folder(self, service, name: str, parent_id: str | None) -> str:
+        query = f"name='{name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        if parent_id:
+            query += f" and '{parent_id}' in parents"
         results = service.files().list(q=query, spaces="drive", fields="files(id)").execute()
         matches = results.get("files", [])
         if matches:
-            self._folder_id = matches[0]["id"]
-        else:
-            metadata = {"name": self.folder_name, "mimeType": "application/vnd.google-apps.folder"}
-            folder = service.files().create(body=metadata, fields="id").execute()
-            self._folder_id = folder["id"]
-        return self._folder_id
+            return matches[0]["id"]
+        metadata = {"name": name, "mimeType": "application/vnd.google-apps.folder"}
+        if parent_id:
+            metadata["parents"] = [parent_id]
+        folder = service.files().create(body=metadata, fields="id").execute()
+        return folder["id"]
 
-    def upload_async(self, file_path: Path):
-        """Fire-and-forget: back up file_path on a background thread."""
-        thread = threading.Thread(target=self._upload, args=(file_path,), daemon=True)
+    def _ensure_subfolder(self, service, category: str) -> str:
+        if category in self._subfolder_ids:
+            return self._subfolder_ids[category]
+        if self._root_folder_id is None:
+            self._root_folder_id = self._find_or_create_folder(service, self.folder_name, None)
+        folder_id = self._find_or_create_folder(service, category, self._root_folder_id)
+        self._subfolder_ids[category] = folder_id
+        return folder_id
+
+    def upload_async(self, file_path: Path, category: str = RECEIVED, delete_after=None, once: bool = False):
+        """Fire-and-forget: back up file_path on a background thread.
+
+        category: subfolder name ("Received" or "Sent").
+        delete_after: overrides self.delete_after_upload for this call when
+            not None. "Sent" files (already the PC's own copy, possibly
+            needed for repeat downloads) should always pass delete_after=False.
+        once: if True, skip if this exact file was already backed up in this
+            process's lifetime — used for "Sent" files, which the /download
+            endpoint could otherwise re-upload on every repeat download.
+        """
+        if once:
+            key = (category, str(file_path.resolve()))
+            if key in self._uploaded_once:
+                return
+            self._uploaded_once.add(key)
+
+        if delete_after is None:
+            delete_after = self.delete_after_upload
+
+        thread = threading.Thread(target=self._upload, args=(file_path, category, delete_after), daemon=True)
         thread.start()
 
-    def _upload(self, file_path: Path):
-        from googleapiclient.http import MediaFileUpload
+    def _upload(self, file_path: Path, category: str, delete_after: bool):
+        from googleapiclient.http import MediaIoBaseUpload
 
         try:
             with self._lock:
                 if self._service is None:
                     self._service = self._get_service()
                 service = self._service
-                folder_id = self._ensure_folder(service)
+                folder_id = self._ensure_subfolder(service, category)
 
+            content_type, _ = mimetypes.guess_type(file_path.name)
+            content_type = content_type or "application/octet-stream"
             metadata = {"name": file_path.name, "parents": [folder_id]}
-            media = MediaFileUpload(str(file_path), resumable=True)
-            service.files().create(body=metadata, media_body=media, fields="id").execute()
-            print(f"[landrop-drive] backed up '{file_path.name}' to Google Drive")
 
-            if self.delete_after_upload:
+            # Open (and close, via `with`) the file ourselves rather than
+            # letting MediaFileUpload manage its own handle — it doesn't
+            # reliably close that handle after execute(), which on Windows
+            # blocks the unlink() below with WinError 32 ("used by another
+            # process") even though the upload already succeeded.
+            with open(file_path, "rb") as fh:
+                media = MediaIoBaseUpload(fh, mimetype=content_type, resumable=True)
+                service.files().create(body=metadata, media_body=media, fields="id").execute()
+
+            print(f"[landrop-drive] backed up '{file_path.name}' to Google Drive ({category})")
+
+            if delete_after:
                 # Only reached after the API call above returned without
                 # raising, i.e. Drive has confirmed the file was created —
-                # safe to free up local disk space now.
+                # safe to free up local disk space now. The file handle
+                # above is guaranteed closed by this point (the `with` block
+                # already exited), so this won't hit WinError 32.
                 try:
                     file_path.unlink()
                     print(f"[landrop-drive] deleted local copy of '{file_path.name}' to free disk space")

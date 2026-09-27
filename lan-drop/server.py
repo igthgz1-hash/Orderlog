@@ -347,6 +347,14 @@ class DropHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+        if self.server.drive_backup is not None:
+            from drive_backup import SENT
+
+            # once=True: don't re-upload on every repeat download of the same
+            # file; delete_after=False: this is the PC's own working copy,
+            # possibly needed for future downloads by other devices too.
+            self.server.drive_backup.upload_async(file_path, category=SENT, delete_after=False, once=True)
+
     def _handle_upload(self):
         content_type = self.headers.get("Content-Type", "")
         length = int(self.headers.get("Content-Length", 0))
