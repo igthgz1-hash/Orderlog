@@ -9,15 +9,19 @@ Quick Share (ซึ่งตอนนี้พูดโปรโตคอล Air
 โปรโตคอล AirDrop ถูกวิศวกรรมย้อนกลับ (reverse-engineered) มาแล้วโดยทีมวิจัย
 (ดู "Open Sesame" ของ TU Darmstadt และโปรเจกต์ OpenDrop) และมีขั้นตอนหลักๆ คือ:
 
-1. **ค้นหาอุปกรณ์ (Discovery)** — ประกาศ service ผ่าน Bonjour/mDNS ชื่อ
-   `_airdrop._tcp.local.` เพื่อให้เครื่องส่งมองเห็น
-2. **ตรวจสอบว่าถึงกันไหม** — เครื่องส่งยิง `POST /Discover` มาก่อน
-3. **ขออนุญาตส่ง** — เครื่องส่งยิง `POST /Ask` พร้อมชื่อไฟล์ ให้ผู้ใช้ที่ PC
+1. **ประกาศตัวตนผ่าน Bluetooth LE** — สิ่งที่ทำให้ไอคอน PC โผล่ในหน้าจอ AirDrop
+   ของ iOS จริงๆ คือสัญญาณ BLE นี้ (ยืนยันจากการทดสอบจริง: mDNS อย่างเดียวไม่พอ
+   ต่อให้เครื่องส่งมองเห็น service ผ่าน mDNS ได้ แต่ AirDrop UI จะไม่แสดงถ้าไม่มี BLE
+   beacon ควบคู่ไปด้วย) — ดูรายละเอียดที่ `ble_beacon_windows.py`
+2. **ค้นหาอุปกรณ์ผ่าน Bonjour/mDNS** — ประกาศ service ชื่อ `_airdrop._tcp.local.`
+   เพื่อให้เครื่องส่งมองเห็น IP/พอร์ตสำหรับต่อผ่าน HTTPS
+3. **ตรวจสอบว่าถึงกันไหม** — เครื่องส่งยิง `POST /Discover` มาก่อน
+4. **ขออนุญาตส่ง** — เครื่องส่งยิง `POST /Ask` พร้อมชื่อไฟล์ ให้ผู้ใช้ที่ PC
    ยืนยันรับ/ปฏิเสธ
-4. **โอนไฟล์จริง** — เครื่องส่งยิง `POST /Upload` พร้อมไฟล์ทั้งหมดในรูป cpio
+5. **โอนไฟล์จริง** — เครื่องส่งยิง `POST /Upload` พร้อมไฟล์ทั้งหมดในรูป cpio
    archive ก้อนเดียว
 
-ทั้งหมดคุยกันผ่าน HTTPS (TLS self-signed certificate) บนพอร์ตเดียวกับที่
+ขั้นที่ 2-5 คุยกันผ่าน HTTPS (TLS self-signed certificate) บนพอร์ตเดียวกับที่
 ประกาศไว้ใน mDNS (ค่าเริ่มต้น 8770)
 
 ## ข้อจำกัดที่ควรรู้ก่อนใช้
@@ -32,6 +36,13 @@ Quick Share (ซึ่งตอนนี้พูดโปรโตคอล Air
 - ทดสอบ/ปรับ TXT record หรือ magic values บางตัวของ mDNS อาจต้องลองจริงกับ
   อุปกรณ์ในมือ เพราะ Apple ไม่เคยเปิดสเปกนี้เป็นทางการ — ค่าที่ใส่ไว้อ้างอิงจาก
   เอกสารสาธารณะที่มีอยู่ ไม่ได้การันตีว่าใช้ได้ 100% กับทุกเวอร์ชัน iOS/One UI
+- **BLE beacon (`ble_beacon_windows.py`) ใช้ได้เฉพาะ Windows** และเนื้อหา payload
+  ข้างในเป็นการสร้างขึ้นจากงานวิจัยสาธารณะที่ยังไม่ยืนยัน 100% ว่าตรงกับของจริง
+  ถ้าลองแล้วยังไม่เห็น PC ในหน้า AirDrop นี่คือจุดแรกที่ต้องปรับ — วิธีเทียบที่แม่นสุดคือ
+  ใช้แอปสแกน BLE เช่น nRF Connect บนมือถืออีกเครื่อง จับสัญญาณจากอุปกรณ์ Apple จริง
+  ที่เปิดรับ AirDrop อยู่ มาเทียบ byte กับที่โค้ดนี้ส่งออกไป
+- ยังไม่รองรับ macOS/Linux สำหรับชั้น BLE (โค้ดจะข้ามส่วนนี้ไปเฉยๆ บนเครื่องที่ไม่ใช่
+  Windows แล้วทำงานต่อแบบไม่มี BLE beacon)
 
 ## การใช้งาน
 
@@ -56,7 +67,9 @@ python3 airdrop_server.py --name "ห้องทำงาน PC" --out-dir ~/Do
 
 ## โครงสร้างไฟล์
 
-- `airdrop_server.py` — entrypoint หลัก, HTTPS server + ประกาศ mDNS
+- `airdrop_server.py` — entrypoint หลัก, HTTPS server + ประกาศ mDNS + เปิด BLE beacon
+- `ble_beacon_windows.py` — BLE beacon ที่ทำให้ไอคอนโผล่ในหน้า AirDrop (Windows only, experimental)
 - `plist_protocol.py` — สร้าง/อ่าน binary plist ตาม endpoint ของ AirDrop
 - `cpio_reader.py` — ตัวอ่าน cpio archive แบบ newc format (ไม่ต้องพึ่ง binary ภายนอก)
 - `certs.py` — สร้างและ cache self-signed TLS certificate
+- `check_mdns.py` — สคริปต์ตรวจสอบว่า mDNS service ประกาศออกไปถึงเครือข่ายจริงไหม (ใช้ตอน debug)

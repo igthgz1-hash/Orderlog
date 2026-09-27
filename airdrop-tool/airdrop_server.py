@@ -170,6 +170,11 @@ def main():
         action="store_true",
         help="Accept incoming transfers without prompting (use with care)",
     )
+    parser.add_argument(
+        "--no-ble",
+        action="store_true",
+        help="Skip the experimental BLE beacon (Windows only; see ble_beacon_windows.py)",
+    )
     args = parser.parse_args()
 
     ip = local_ip()
@@ -184,6 +189,13 @@ def main():
 
     zc = register_mdns(args.name, args.port, ip)
 
+    ble_beacon = None
+    if not args.no_ble:
+        from ble_beacon_windows import AirDropBleBeacon
+
+        ble_beacon = AirDropBleBeacon()
+        ble_beacon.start()
+
     print(f"[airdrop] receiving as '{args.name}' on https://{ip}:{args.port}")
     print(f"[airdrop] files will be saved to {out_dir}")
     print("[airdrop] make sure this PC and the sending phone are on the same Wi-Fi network")
@@ -194,6 +206,8 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        if ble_beacon is not None:
+            ble_beacon.stop()
         if zc is not None:
             zc.close()
         httpd.shutdown()
