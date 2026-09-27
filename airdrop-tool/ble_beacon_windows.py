@@ -13,12 +13,12 @@ mDNS/HTTPS handshake this tool already implements.
 Confidence level: the outer envelope (Apple's manufacturer ID 0x004C, an
 AirDrop sub-type byte of 0x05 inside Apple's multiplexed "Continuity"
 advertisement format) is corroborated by multiple public write-ups. The
-exact inner payload bytes are NOT — Apple has never documented this, and
-the byte layout below is a best-effort reconstruction. If AirDrop still
-doesn't show this PC after enabling this beacon, that inner payload is the
-first thing to re-check, ideally by comparing against a real Apple
-device's advertisement captured with a BLE scanner app (e.g. nRF Connect)
-on another phone.
+inner payload layout below follows the furiousMAC/continuity project's
+documented AirDrop message structure (github.com/furiousMAC/continuity,
+messages/airdrop.md), cross-checked against a real captured advertisement
+byte dump (`17FF4C000512...`) referenced in an unrelated AirDrop
+interoperability project's issue tracker. It is still not an official
+Apple spec, so it may not hold across every iOS version.
 
 Requires Windows 10/11 and the `winrt-Windows.Devices.Bluetooth.Advertisement`
 and `winrt-Windows.Storage.Streams` packages (see requirements.txt).
@@ -31,20 +31,26 @@ AIRDROP_TYPE = 0x05
 
 
 def _build_payload() -> bytes:
-    """Best-effort AirDrop BLE advertisement payload.
+    """AirDrop BLE advertisement payload (Type 0x05, 18-byte body).
 
-    Layout (reconstructed, not officially documented):
-      [0]    AirDrop sub-type (0x05)
-      [1]    length of the remaining bytes
-      [2-3]  version/prefix bytes
-      [4:]   up to 4 truncated (2-byte) contact-identifier hashes;
-             all-zero here, meaning "no contact restriction" (matches
-             AirDrop's "Everyone" receiving mode rather than "Contacts Only").
+    Layout, per furiousMAC/continuity's documented structure:
+      [0]     AirDrop sub-type (0x05)
+      [1]     length of the body that follows (0x12 = 18)
+      [2-9]   8-byte prefix, zero
+      [10]    version (0x01)
+      [11-18] four 2-byte truncated contact-identifier hashes (AppleID,
+              phone, email, email2); all-zero here since this receiver has
+              no real contacts to hash — matches AirDrop's "Everyone" mode
+              rather than "Contacts Only", which is all this tool supports
+              anyway (see certs.py).
+      [19]    1-byte suffix, zero
     """
-    version_prefix = bytes([0x00, 0x01])
-    contact_hash_slots = bytes(8)  # 4 slots x 2 bytes, all zero
-    inner = version_prefix + contact_hash_slots
-    return bytes([AIRDROP_TYPE, len(inner)]) + inner
+    prefix = bytes(8)
+    version = bytes([0x01])
+    contact_hashes = bytes(8)  # 4 slots x 2 bytes, all zero
+    suffix = bytes([0x00])
+    body = prefix + version + contact_hashes + suffix
+    return bytes([AIRDROP_TYPE, len(body)]) + body
 
 
 class AirDropBleBeacon:
