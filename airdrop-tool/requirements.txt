@@ -6,3 +6,5 @@ cryptography>=41.0.0
 # alone is not enough. Not installable/needed on Linux or macOS.
 winrt-Windows.Devices.Bluetooth.Advertisement; sys_platform == "win32"
 winrt-Windows.Storage.Streams; sys_platform == "win32"
+winrt-Windows.Foundation; sys_platform == "win32"
+winrt-Windows.Foundation.Collections; sys_platform == "win32"
