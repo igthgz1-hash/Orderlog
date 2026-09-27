@@ -24,6 +24,7 @@ Requires Windows 10/11 and the `winrt-Windows.Devices.Bluetooth.Advertisement`
 and `winrt-Windows.Storage.Streams` packages (see requirements.txt).
 """
 import sys
+import time
 
 APPLE_COMPANY_ID = 0x004C
 AIRDROP_TYPE = 0x05
@@ -57,6 +58,7 @@ class AirDropBleBeacon:
         try:
             from winrt.windows.devices.bluetooth.advertisement import (
                 BluetoothLEAdvertisementPublisher,
+                BluetoothLEAdvertisementPublisherStatus,
                 BluetoothLEManufacturerData,
             )
             from winrt.windows.storage.streams import DataWriter
@@ -80,14 +82,35 @@ class AirDropBleBeacon:
         publisher = BluetoothLEAdvertisementPublisher()
         publisher.advertisement.manufacturer_data.append(manufacturer_data)
 
+        def on_status_changed(_publisher, args):
+            status = args.status
+            print(f"[airdrop-ble] publisher status changed: {status}")
+            if status == BluetoothLEAdvertisementPublisherStatus.ABORTED:
+                print(f"[airdrop-ble] advertising aborted, error={args.error}", file=sys.stderr)
+
+        publisher.add_status_changed(on_status_changed)
+
         try:
             publisher.start()
         except Exception as exc:  # noqa: BLE001 - surface any WinRT/hardware error plainly
             print(f"[airdrop-ble] failed to start BLE advertising: {exc}", file=sys.stderr)
             return False
 
+        # publisher.start() can return before Windows has actually confirmed
+        # advertising started (or silently failed, e.g. no BLE-capable radio).
+        # Give it a moment, then report the real status instead of assuming
+        # success just because start() didn't raise.
+        time.sleep(1)
+        print(f"[airdrop-ble] publisher status: {publisher.status}")
+        if publisher.status != BluetoothLEAdvertisementPublisherStatus.STARTED:
+            print(
+                "[airdrop-ble] WARNING: status is not STARTED — this PC is likely NOT "
+                "actually broadcasting. Check that Bluetooth is on and this machine has "
+                "a BLE-capable adapter.",
+                file=sys.stderr,
+            )
+
         self._publisher = publisher
-        print("[airdrop-ble] broadcasting experimental AirDrop BLE beacon")
         return True
 
     def stop(self):
