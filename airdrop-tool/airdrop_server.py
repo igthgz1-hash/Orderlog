@@ -151,7 +151,10 @@ def register_mdns(computer_name: str, port: int, ip: str):
         properties={"flags": "507"},
         server=hostname,
     )
-    zc = Zeroconf()
+    # Bind explicitly to this IP's interface. Machines with extra virtual
+    # adapters (VPNs, Hyper-V/Docker virtual switches, etc.) can otherwise
+    # make zeroconf send mDNS packets out the wrong NIC.
+    zc = Zeroconf(interfaces=[ip])
     zc.register_service(info)
     print(f"[airdrop] advertising as '{computer_name}' via mDNS on {ip}:{port}")
     return zc
