@@ -65,3 +65,7 @@ python3 server.py --name "PC ของฉัน" --out-dir ~/Downloads/LanDrop
 - `server.py` — เว็บเซิร์ฟเวอร์ทั้งหมด (หน้าเว็บ + endpoint รับไฟล์ + QR code)
 - `install.ps1` / `uninstall.ps1` — ตัวติดตั้ง/ถอนการติดตั้งสำหรับ Windows
 - `install.sh` — ตัวติดตั้งสำหรับ macOS/Linux
+
+## ลิขสิทธิ์
+
+สงวนลิขสิทธิ์ทั้งหมด — ดูรายละเอียดที่ [`LICENSE`](../LICENSE) ที่ root ของ repo

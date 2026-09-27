@@ -73,3 +73,7 @@ python3 airdrop_server.py --name "ห้องทำงาน PC" --out-dir ~/Do
 - `cpio_reader.py` — ตัวอ่าน cpio archive แบบ newc format (ไม่ต้องพึ่ง binary ภายนอก)
 - `certs.py` — สร้างและ cache self-signed TLS certificate
 - `check_mdns.py` — สคริปต์ตรวจสอบว่า mDNS service ประกาศออกไปถึงเครือข่ายจริงไหม (ใช้ตอน debug)
+
+## ลิขสิทธิ์
+
+สงวนลิขสิทธิ์ทั้งหมด — ดูรายละเอียดที่ [`LICENSE`](../LICENSE) ที่ root ของ repo
