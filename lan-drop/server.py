@@ -17,6 +17,7 @@ import html
 import mimetypes
 import re
 import socket
+import sys
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -342,6 +343,8 @@ class DropHandler(BaseHTTPRequestHandler):
             dest = self.server.save_file(filename, data)
             saved.append(dest)
             print(f"[landrop] received {dest} ({len(data)} bytes)")
+            if self.server.drive_backup is not None:
+                self.server.drive_backup.upload_async(dest)
 
         self.send_response(303)
         self.send_header("Location", f"/?uploaded={len(saved)}")
@@ -352,11 +355,12 @@ class DropHandler(BaseHTTPRequestHandler):
 
 
 class DropServer(ThreadingHTTPServer):
-    def __init__(self, address, handler, computer_name: str, out_dir: Path, send_dir: Path):
+    def __init__(self, address, handler, computer_name: str, out_dir: Path, send_dir: Path, drive_backup=None):
         super().__init__(address, handler)
         self.computer_name = computer_name
         self.out_dir = out_dir
         self.send_dir = send_dir
+        self.drive_backup = drive_backup
 
     def save_file(self, name: str, data: bytes) -> Path:
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -389,6 +393,14 @@ def main():
                          help="Where files sent FROM the phone are saved")
     parser.add_argument("--send-dir", default=str(Path.home() / "LanDropToSend"),
                          help="Drop files here to make them downloadable BY the phone")
+    parser.add_argument("--backup-to-drive", action="store_true",
+                         help="Back up every file received from the phone to Google Drive (see README)")
+    parser.add_argument("--drive-folder", default="LAN Drop Backups",
+                         help="Google Drive folder name to back up into")
+    parser.add_argument("--drive-credentials", default=str(Path(__file__).parent / "credentials.json"),
+                         help="Path to the OAuth client credentials.json from Google Cloud Console")
+    parser.add_argument("--drive-token", default=str(Path(__file__).parent / "token.json"),
+                         help="Where to cache the OAuth token after the first sign-in")
     args = parser.parse_args()
 
     ip = local_ip()
@@ -397,12 +409,29 @@ def main():
     send_dir.mkdir(parents=True, exist_ok=True)
     url = f"http://{ip}:{args.port}/"
 
-    httpd = DropServer(("0.0.0.0", args.port), DropHandler, args.name, out_dir, send_dir)
+    drive_backup = None
+    if args.backup_to_drive:
+        try:
+            from drive_backup import DriveBackup
+        except ImportError:
+            print(
+                "[landrop-drive] Google API packages not installed. Run:\n"
+                "                pip install -r requirements-drive.txt",
+                file=sys.stderr,
+            )
+        else:
+            drive_backup = DriveBackup(
+                Path(args.drive_credentials), Path(args.drive_token), args.drive_folder
+            )
+
+    httpd = DropServer(("0.0.0.0", args.port), DropHandler, args.name, out_dir, send_dir, drive_backup)
 
     print("LAN Drop — Copyright (c) 2026 Sevastopol. All Rights Reserved.")
     print(f"[landrop] receiving as '{args.name}' at {url}")
     print(f"[landrop] files sent from phone will be saved to {out_dir}")
     print(f"[landrop] put files here to let the phone download them: {send_dir}")
+    if drive_backup is not None:
+        print(f"[landrop] Google Drive backup enabled -> folder '{args.drive_folder}'")
     print("[landrop] scan this QR code on your phone (must be on the same Wi-Fi network):")
     print_qr(url)
     print(f"[landrop] started {datetime.now().isoformat(timespec='seconds')} — Ctrl+C to stop")

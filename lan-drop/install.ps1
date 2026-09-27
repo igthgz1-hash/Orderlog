@@ -41,6 +41,8 @@ Write-Host "Installing LAN Drop to $InstallDir ..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path (Join-Path $SourceDir "server.py") -Destination $InstallDir -Force
 Copy-Item -Path (Join-Path $SourceDir "requirements.txt") -Destination $InstallDir -Force
+Copy-Item -Path (Join-Path $SourceDir "drive_backup.py") -Destination $InstallDir -Force
+Copy-Item -Path (Join-Path $SourceDir "requirements-drive.txt") -Destination $InstallDir -Force
 if (Test-Path $LicenseSource) {
     Copy-Item -Path $LicenseSource -Destination $InstallDir -Force
 }

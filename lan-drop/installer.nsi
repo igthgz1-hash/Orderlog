@@ -31,6 +31,8 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File "server.py"
   File "requirements.txt"
+  File "drive_backup.py"
+  File "requirements-drive.txt"
   File "install.ps1"
   File "..\LICENSE"
 

@@ -25,6 +25,8 @@ echo "Installing LAN Drop to $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR"
 cp "$SOURCE_DIR/server.py" "$INSTALL_DIR/"
 cp "$SOURCE_DIR/requirements.txt" "$INSTALL_DIR/"
+cp "$SOURCE_DIR/drive_backup.py" "$INSTALL_DIR/"
+cp "$SOURCE_DIR/requirements-drive.txt" "$INSTALL_DIR/"
 if [ -f "$REPO_ROOT/LICENSE" ]; then
     cp "$REPO_ROOT/LICENSE" "$INSTALL_DIR/"
 fi
