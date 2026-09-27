@@ -62,6 +62,8 @@ $venvPython = Join-Path $venvDir "Scripts\python.exe"
 Write-Host "Installing dependencies ..."
 & $venvPython -m pip install --quiet --upgrade pip
 & $venvPython -m pip install --quiet -r (Join-Path $InstallDir "requirements.txt")
+Write-Host "Installing Google Drive backup dependencies ..."
+& $venvPython -m pip install --quiet -r (Join-Path $InstallDir "requirements-drive.txt")
 
 Write-Host "Opening firewall port $Port (TCP) ..."
 if (-not (Get-NetFirewallRule -DisplayName "LanDrop" -ErrorAction SilentlyContinue)) {

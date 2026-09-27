@@ -82,5 +82,9 @@ Section "Run"
 
   launch:
     DetailPrint "Starting ${APP_NAME}..."
-    Exec '"cmd.exe" /c start "${APP_NAME}" "$2\.venv\Scripts\python.exe" "$2\server.py" --name "%COMPUTERNAME%"'
+    ; --backup-to-drive is safe to pass unconditionally: if credentials.json
+    ; isn't present yet in %LOCALAPPDATA%\LanDrop on this PC, drive_backup.py
+    ; just logs that to the console and file transfer keeps working normally
+    ; (see README.md "Google Drive backup" for the one-time per-PC setup).
+    Exec '"cmd.exe" /c start "${APP_NAME}" "$2\.venv\Scripts\python.exe" "$2\server.py" --name "%COMPUTERNAME%" --backup-to-drive'
 SectionEnd
