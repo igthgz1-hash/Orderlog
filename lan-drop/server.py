@@ -74,12 +74,15 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
     background: var(--success-bg); color: var(--success-text);
   }}
   .dropzone {{
-    background: var(--surface); border-radius: 18px; text-align: center;
-    padding: 36px 16px; cursor: pointer; transition: background .15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: rgba(94,161,255,0.14); color: var(--accent); border-radius: 999px;
+    padding: 15px 16px; cursor: pointer; transition: background .15s;
+    font-weight: 700; font-size: 0.98rem;
   }}
-  .dropzone.dragover {{ background: var(--success-bg); }}
-  .dropzone .icon {{ font-size: 2.1rem; display: block; margin-bottom: 10px; }}
-  .dropzone .hint {{ color: var(--muted); font-size: 0.85rem; display: block; margin-top: 6px; }}
+  .dropzone.dragover {{ background: rgba(94,161,255,0.28); }}
+  .hint {{
+    display: block; text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 10px;
+  }}
   .selected-names {{
     margin-top: 12px; font-size: 0.82rem; color: var(--accent); word-break: break-word;
   }}
@@ -116,11 +119,10 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <div class="card">
   <form method="POST" action="/upload" enctype="multipart/form-data" id="uploadForm">
     <label class="dropzone" for="fileInput" id="dropzone">
-      <span class="icon">✦</span>
-      <span>แตะเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</span>
-      <span class="hint">เลือกได้หลายไฟล์พร้อมกัน</span>
-      <div class="selected-names" id="selectedNames"></div>
+      <span>Import file</span>
     </label>
+    <span class="hint">แตะเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่ · เลือกได้หลายไฟล์พร้อมกัน</span>
+    <div class="selected-names" id="selectedNames"></div>
     <input type="file" name="file" id="fileInput" multiple required>
     <button type="submit">ส่งไฟล์เข้า {computer_name}</button>
   </form>
