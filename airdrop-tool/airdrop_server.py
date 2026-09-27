@@ -22,6 +22,7 @@ import argparse
 import socket
 import ssl
 import sys
+import threading
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -163,6 +164,41 @@ def register_mdns(computer_name: str, port: int, ip: str):
     return zc
 
 
+def _start_ble_beacon_with_timeout(ble_beacon, timeout=5.0):
+    """Run ble_beacon.start() on a background thread with a hard timeout.
+
+    The Windows BLE beacon touches WinRT APIs that can hang the calling
+    thread indefinitely under some COM/threading conditions we can't
+    reliably reproduce or fix blind. A hang there must never take down the
+    whole server — mDNS + HTTPS file receiving should keep working even if
+    BLE never starts.
+    """
+    result = {}
+
+    def runner():
+        try:
+            result["ok"] = ble_beacon.start()
+        except Exception as exc:  # noqa: BLE001 - report, don't crash the server
+            result["error"] = exc
+
+    thread = threading.Thread(target=runner, daemon=True)
+    thread.start()
+    thread.join(timeout)
+
+    if thread.is_alive():
+        print(
+            f"[airdrop-ble] timed out after {timeout:.0f}s starting the BLE beacon — "
+            "continuing without it (mDNS + file receiving still work). This points to a "
+            "Windows/WinRT threading issue rather than something fixable by retrying.",
+            file=sys.stderr,
+        )
+        return False
+    if "error" in result:
+        print(f"[airdrop-ble] beacon start raised an exception: {result['error']}", file=sys.stderr)
+        return False
+    return result.get("ok", False)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--name", default=socket.gethostname(), help="Name shown in the AirDrop sheet")
@@ -199,7 +235,7 @@ def main():
             from ble_beacon_windows import AirDropBleBeacon
 
             ble_beacon = AirDropBleBeacon()
-            ble_beacon.start()
+            _start_ble_beacon_with_timeout(ble_beacon)
 
         print(f"[airdrop] receiving as '{args.name}' on https://{ip}:{args.port}")
         print(f"[airdrop] files will be saved to {out_dir}")
