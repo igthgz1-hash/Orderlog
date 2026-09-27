@@ -186,6 +186,21 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 """
 
 
+_ILLEGAL_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def sanitize_filename(name: str) -> str:
+    """Strip characters Windows forbids in filenames (<>:"/\\|?*) and any
+    path components, so filenames phones commonly send (many browsers'
+    default share-sheet names include " | " or ":") don't crash save_file
+    with OSError: [Errno 22] Invalid argument on Windows.
+    """
+    name = Path(name).name
+    name = _ILLEGAL_FILENAME_CHARS.sub("_", name)
+    name = name.rstrip(". ")  # Windows also disallows trailing dots/spaces
+    return name or "file"
+
+
 def local_ip() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -364,7 +379,7 @@ class DropServer(ThreadingHTTPServer):
 
     def save_file(self, name: str, data: bytes) -> Path:
         self.out_dir.mkdir(parents=True, exist_ok=True)
-        dest = self.out_dir / Path(name).name
+        dest = self.out_dir / sanitize_filename(name)
         counter = 1
         while dest.exists():
             dest = self.out_dir / f"{dest.stem}_{counter}{dest.suffix}"

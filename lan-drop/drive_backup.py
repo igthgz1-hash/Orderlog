@@ -62,7 +62,11 @@ class DriveBackup:
                     )
                 flow = InstalledAppFlow.from_client_secrets_file(str(self.credentials_path), SCOPES)
                 print("[landrop-drive] opening browser for Google sign-in (one-time setup)...")
-                creds = flow.run_local_server(port=0)
+                # timeout_seconds: if the browser sign-in is abandoned or
+                # blocked (e.g. Google's "Access blocked" screen, which never
+                # redirects back), this would otherwise wait forever while
+                # holding _lock — freezing every future backup attempt.
+                creds = flow.run_local_server(port=0, timeout_seconds=180)
             self.token_path.write_text(creds.to_json())
 
         return build("drive", "v3", credentials=creds)
