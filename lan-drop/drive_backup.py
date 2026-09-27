@@ -24,10 +24,17 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 
 class DriveBackup:
-    def __init__(self, credentials_path: Path, token_path: Path, folder_name: str):
+    def __init__(
+        self,
+        credentials_path: Path,
+        token_path: Path,
+        folder_name: str,
+        delete_after_upload: bool = True,
+    ):
         self.credentials_path = credentials_path
         self.token_path = token_path
         self.folder_name = folder_name
+        self.delete_after_upload = delete_after_upload
         self._service = None
         self._folder_id = None
         self._lock = threading.Lock()
@@ -96,5 +103,15 @@ class DriveBackup:
             media = MediaFileUpload(str(file_path), resumable=True)
             service.files().create(body=metadata, media_body=media, fields="id").execute()
             print(f"[landrop-drive] backed up '{file_path.name}' to Google Drive")
+
+            if self.delete_after_upload:
+                # Only reached after the API call above returned without
+                # raising, i.e. Drive has confirmed the file was created —
+                # safe to free up local disk space now.
+                try:
+                    file_path.unlink()
+                    print(f"[landrop-drive] deleted local copy of '{file_path.name}' to free disk space")
+                except OSError as exc:
+                    print(f"[landrop-drive] backed up but could not delete local file '{file_path.name}': {exc}", file=sys.stderr)
         except Exception as exc:  # noqa: BLE001 — a failed backup must never crash the server
             print(f"[landrop-drive] backup failed for '{file_path.name}': {exc}", file=sys.stderr)

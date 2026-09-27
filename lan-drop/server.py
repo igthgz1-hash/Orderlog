@@ -401,6 +401,9 @@ def main():
                          help="Path to the OAuth client credentials.json from Google Cloud Console")
     parser.add_argument("--drive-token", default=str(Path(__file__).parent / "token.json"),
                          help="Where to cache the OAuth token after the first sign-in")
+    parser.add_argument("--keep-local-copy", action="store_true",
+                         help="With --backup-to-drive, keep the local copy too instead of deleting "
+                              "it after a successful backup (default: delete it, to save disk space)")
     args = parser.parse_args()
 
     ip = local_ip()
@@ -421,7 +424,8 @@ def main():
             )
         else:
             drive_backup = DriveBackup(
-                Path(args.drive_credentials), Path(args.drive_token), args.drive_folder
+                Path(args.drive_credentials), Path(args.drive_token), args.drive_folder,
+                delete_after_upload=not args.keep_local_copy,
             )
 
     httpd = DropServer(("0.0.0.0", args.port), DropHandler, args.name, out_dir, send_dir, drive_backup)
@@ -432,6 +436,10 @@ def main():
     print(f"[landrop] put files here to let the phone download them: {send_dir}")
     if drive_backup is not None:
         print(f"[landrop] Google Drive backup enabled -> folder '{args.drive_folder}'")
+        if drive_backup.delete_after_upload:
+            print("[landrop] local copies will be DELETED after a successful backup (frees disk space)")
+        else:
+            print("[landrop] local copies will be kept (--keep-local-copy)")
     print("[landrop] scan this QR code on your phone (must be on the same Wi-Fi network):")
     print_qr(url)
     print(f"[landrop] started {datetime.now().isoformat(timespec='seconds')} — Ctrl+C to stop")
