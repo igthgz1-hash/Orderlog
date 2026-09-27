@@ -155,7 +155,10 @@ def register_mdns(computer_name: str, port: int, ip: str):
     # adapters (VPNs, Hyper-V/Docker virtual switches, etc.) can otherwise
     # make zeroconf send mDNS packets out the wrong NIC.
     zc = Zeroconf(interfaces=[ip])
-    zc.register_service(info)
+    # allow_name_change: if a previous run's record is still lingering on the
+    # network (e.g. the process was killed before it could unregister),
+    # auto-suffix the name instead of raising NonUniqueNameException.
+    zc.register_service(info, allow_name_change=True)
     print(f"[airdrop] advertising as '{computer_name}' via mDNS on {ip}:{port}")
     return zc
 
@@ -187,25 +190,30 @@ def main():
     httpd = AirDropServer(("0.0.0.0", args.port), AirDropHandler, args.name, out_dir, args.auto_accept)
     httpd.socket = ssl_context.wrap_socket(httpd.socket, server_side=True)
 
-    zc = register_mdns(args.name, args.port, ip)
-
+    zc = None
     ble_beacon = None
-    if not args.no_ble:
-        from ble_beacon_windows import AirDropBleBeacon
-
-        ble_beacon = AirDropBleBeacon()
-        ble_beacon.start()
-
-    print(f"[airdrop] receiving as '{args.name}' on https://{ip}:{args.port}")
-    print(f"[airdrop] files will be saved to {out_dir}")
-    print("[airdrop] make sure this PC and the sending phone are on the same Wi-Fi network")
-    print(f"[airdrop] started {datetime.now().isoformat(timespec='seconds')} — Ctrl+C to stop")
-
     try:
+        zc = register_mdns(args.name, args.port, ip)
+
+        if not args.no_ble:
+            from ble_beacon_windows import AirDropBleBeacon
+
+            ble_beacon = AirDropBleBeacon()
+            ble_beacon.start()
+
+        print(f"[airdrop] receiving as '{args.name}' on https://{ip}:{args.port}")
+        print(f"[airdrop] files will be saved to {out_dir}")
+        print("[airdrop] make sure this PC and the sending phone are on the same Wi-Fi network")
+        print(f"[airdrop] started {datetime.now().isoformat(timespec='seconds')} — Ctrl+C to stop")
+
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        # However we got here (Ctrl+C, or an error anywhere above, e.g. in
+        # the BLE beacon), make sure mDNS gets properly unregistered —
+        # otherwise a stale record lingers and the *next* run fails with
+        # zeroconf.NonUniqueNameException.
         if ble_beacon is not None:
             ble_beacon.stop()
         if zc is not None:

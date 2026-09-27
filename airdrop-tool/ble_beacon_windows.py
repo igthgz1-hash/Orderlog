@@ -73,7 +73,7 @@ class AirDropBleBeacon:
             return False
 
         writer = DataWriter()
-        writer.write_bytes(list(_build_payload()))
+        writer.write_bytes(_build_payload())
 
         manufacturer_data = BluetoothLEManufacturerData()
         manufacturer_data.company_id = APPLE_COMPANY_ID
