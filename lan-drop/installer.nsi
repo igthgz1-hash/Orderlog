@@ -35,7 +35,25 @@ Section "Run"
 
   ; Fast path: already set up on this PC (from a previous run) — skip
   ; straight to launching, no need to re-run pip/firewall/shortcut steps.
-  IfFileExists "$2\.venv\Scripts\python.exe" already_installed do_install
+  IfFileExists "$2\.venv\Scripts\python.exe" already_installed check_python
+
+  check_python:
+    ; Python itself isn't bundled in this installer (this build environment's
+    ; network policy blocks python.org, so it couldn't be fetched to embed).
+    ; Detect it's missing before attempting setup, and offer to open the
+    ; download page instead of failing deep inside install.ps1.
+    nsExec::ExecToStack 'cmd /c where python'
+    Pop $4 ; exit code
+    Pop $5 ; captured output (unused, but must be popped to keep the stack balanced)
+    ${If} $4 != 0
+      MessageBox MB_YESNO|MB_ICONQUESTION "Python 3 was not found on this PC — ${APP_NAME} needs it to run.$\r$\n$\r$\nOpen the Python download page now? After installing (check 'Add python.exe to PATH' during setup), run ${APP_NAME} again." IDYES open_python_page
+      Goto python_missing_end
+      open_python_page:
+        ExecShell "open" "https://www.python.org/downloads/windows/"
+      python_missing_end:
+      Abort
+    ${EndIf}
+    Goto do_install
 
   do_install:
     DetailPrint "First time on this PC — running one-time setup..."

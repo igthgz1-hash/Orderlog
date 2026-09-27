@@ -1,5 +1,5 @@
 <#
-Sevastopol File Transfer — installer for Windows.
+Sevastopol File Transfer - installer for Windows.
 Copyright (c) 2026 Sevastopol. All Rights Reserved. See ..\LICENSE.
 
 Installs into %LOCALAPPDATA%\LanDrop, sets up a Python virtual
@@ -7,7 +7,7 @@ environment with its dependencies, opens the firewall port it needs, and
 creates a Desktop shortcut to start it.
 
 Usage (run from PowerShell AS ADMINISTRATOR, from inside the lan-drop
-folder — right-click install.ps1 -> "Run with PowerShell", or):
+folder - right-click install.ps1 -> "Run with PowerShell", or):
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
     .\install.ps1
 #>
@@ -18,7 +18,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Sevastopol File Transfer — Installer" -ForegroundColor Cyan
+Write-Host "Sevastopol File Transfer - Installer" -ForegroundColor Cyan
 Write-Host "Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan
 Write-Host ""
 
@@ -83,7 +83,7 @@ $shortcut.Save()
 
 Write-Host ""
 Write-Host "Done. Double-click 'Sevastopol File Transfer' on your Desktop to start the server." -ForegroundColor Green
-Write-Host "A console window will open showing a QR code and URL — scan it from your phone (same Wi-Fi network)."
+Write-Host "A console window will open showing a QR code and URL - scan it from your phone (same Wi-Fi network)."
 Write-Host "To remove it later, run uninstall.ps1 from this same folder."
 Write-Host ""
-Write-Host "Sevastopol File Transfer — Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan
+Write-Host "Sevastopol File Transfer - Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan

@@ -1,5 +1,5 @@
 <#
-Sevastopol File Transfer — uninstaller for Windows.
+Sevastopol File Transfer - uninstaller for Windows.
 Copyright (c) 2026 Sevastopol. All Rights Reserved. See ..\LICENSE.
 
 Removes what install.ps1 set up: the installed copy, the Desktop shortcut,
