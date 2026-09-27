@@ -55,11 +55,11 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
       --success-bg: #123321; --success-text: #57d67c; --dropzone-bg: #2c2c2e;
     }}
   }}
-  * {{ box-sizing: border-box; }}
+  * {{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }}
   body {{
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Sarabun, Roboto, sans-serif;
     max-width: 520px; margin: 0 auto; padding: 28px 16px 40px;
-    background: var(--bg); color: var(--text);
+    background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
   }}
   header {{ text-align: center; margin-bottom: 24px; }}
   header .badge {{
@@ -79,10 +79,13 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
     background: var(--success-bg); color: var(--success-text);
   }}
   .dropzone {{
-    border: 2px dashed var(--border); border-radius: 16px;
+    border: 2px solid var(--border); border-radius: 16px;
     background: var(--dropzone-bg); text-align: center;
     padding: 32px 16px; cursor: pointer; transition: border-color .15s, background .15s;
   }}
+  /* Note: intentionally NOT border-style:dashed — combined with
+     border-radius, WebKit/Safari clumps the dashes into thick blobs at
+     the corners instead of spacing them evenly around the curve. */
   .dropzone.dragover {{ border-color: var(--accent); background: var(--success-bg); }}
   .dropzone .icon {{ font-size: 2.2rem; display: block; margin-bottom: 8px; }}
   .dropzone .hint {{ color: var(--muted); font-size: 0.9rem; display: block; margin-top: 4px; }}
