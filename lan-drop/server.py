@@ -44,79 +44,70 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <title>LAN Drop — {computer_name}</title>
 <style>
   :root {{
-    --bg: #f2f2f7; --card: #ffffff; --text: #1d1d1f; --muted: #6e6e73;
-    --accent: #0071e3; --accent-active: #0058b0; --border: #e5e5ea;
-    --success-bg: #e6f7ec; --success-text: #1e7e3c; --dropzone-bg: #f9f9fb;
-  }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{
-      --bg: #000000; --card: #1c1c1e; --text: #f5f5f7; --muted: #98989d;
-      --accent: #0a84ff; --accent-active: #409cff; --border: #38383a;
-      --success-bg: #123321; --success-text: #57d67c; --dropzone-bg: #2c2c2e;
-    }}
+    --bg: #05060a; --bg-glow: #131a30; --card: #12141d; --surface: #1b1e2a;
+    --text: #eef0f6; --muted: #80869b; --accent: #5ea1ff; --accent-active: #3f7fe0;
+    --divider: #262a3a; --success-bg: #10241c; --success-text: #4ade80;
   }}
   * {{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }}
+  html {{ background: var(--bg); }}
   body {{
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Sarabun, Roboto, sans-serif;
-    max-width: 520px; margin: 0 auto; padding: 28px 16px 40px;
-    background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+    max-width: 520px; margin: 0 auto; padding: 32px 16px 44px;
+    background: radial-gradient(ellipse 100% 260px at 50% -20px, var(--bg-glow), var(--bg) 70%);
+    color: var(--text); -webkit-font-smoothing: antialiased;
   }}
-  header {{ text-align: center; margin-bottom: 24px; }}
+  header {{ text-align: center; margin-bottom: 28px; }}
   header .badge {{
-    display: inline-block; font-size: 0.8rem; color: var(--muted);
-    background: var(--card); border: 1px solid var(--border);
-    padding: 4px 12px; border-radius: 999px; margin-bottom: 10px;
+    display: inline-block; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); background: var(--surface);
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 14px;
   }}
-  h1 {{ font-size: 1.5rem; margin: 0; }}
-  h2 {{ font-size: 1.05rem; margin: 28px 0 12px; color: var(--text); }}
-  .card {{
-    background: var(--card); border-radius: 20px; padding: 22px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  h1 {{ font-size: 1.6rem; margin: 0; letter-spacing: 0.01em; }}
+  h2 {{
+    font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase;
+    margin: 30px 2px 12px; color: var(--muted); font-weight: 600;
   }}
+  .card {{ background: var(--card); border-radius: 22px; padding: 20px; }}
   .status-banner {{
-    padding: 14px 16px; border-radius: 14px; margin-bottom: 18px;
-    font-weight: 600; font-size: 0.95rem;
+    padding: 14px 18px; border-radius: 16px; margin-bottom: 18px;
+    font-weight: 600; font-size: 0.92rem;
     background: var(--success-bg); color: var(--success-text);
   }}
   .dropzone {{
-    border: 2px solid var(--border); border-radius: 16px;
-    background: var(--dropzone-bg); text-align: center;
-    padding: 32px 16px; cursor: pointer; transition: border-color .15s, background .15s;
+    background: var(--surface); border-radius: 18px; text-align: center;
+    padding: 36px 16px; cursor: pointer; transition: background .15s;
   }}
-  /* Note: intentionally NOT border-style:dashed — combined with
-     border-radius, WebKit/Safari clumps the dashes into thick blobs at
-     the corners instead of spacing them evenly around the curve. */
-  .dropzone.dragover {{ border-color: var(--accent); background: var(--success-bg); }}
-  .dropzone .icon {{ font-size: 2.2rem; display: block; margin-bottom: 8px; }}
-  .dropzone .hint {{ color: var(--muted); font-size: 0.9rem; display: block; margin-top: 4px; }}
+  .dropzone.dragover {{ background: var(--success-bg); }}
+  .dropzone .icon {{ font-size: 2.1rem; display: block; margin-bottom: 10px; }}
+  .dropzone .hint {{ color: var(--muted); font-size: 0.85rem; display: block; margin-top: 6px; }}
   .selected-names {{
-    margin-top: 10px; font-size: 0.85rem; color: var(--accent); word-break: break-word;
+    margin-top: 12px; font-size: 0.82rem; color: var(--accent); word-break: break-word;
   }}
   input[type=file] {{ display: none; }}
   button {{
-    width: 100%; margin-top: 18px; padding: 15px; font-size: 1.05rem;
-    border: none; border-radius: 12px; background: var(--accent); color: white;
-    font-weight: 600; cursor: pointer; transition: background .15s;
+    width: 100%; margin-top: 18px; padding: 16px; font-size: 1rem;
+    border: none; border-radius: 999px; background: var(--accent); color: #04101f;
+    font-weight: 700; cursor: pointer; transition: background .15s;
   }}
   button:active {{ background: var(--accent-active); }}
   ul.file-list {{ list-style: none; margin: 0; padding: 0; }}
   .file-item {{
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 12px 0; border-bottom: 1px solid var(--border);
+    padding: 13px 0; border-bottom: 1px solid var(--divider);
   }}
   .file-item:last-child {{ border-bottom: none; }}
   .file-item .file-label {{ display: flex; align-items: center; gap: 10px; min-width: 0; }}
   .file-item .file-label a {{ color: var(--text); text-decoration: none; }}
   .file-item .file-label a:active {{ color: var(--accent); }}
   .file-name {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-  .file-meta {{ color: var(--muted); font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }}
-  .empty {{ color: var(--muted); font-size: 0.9rem; padding: 8px 0; }}
-  footer {{ text-align: center; margin-top: 36px; color: var(--muted); font-size: 0.78rem; }}
+  .file-meta {{ color: var(--muted); font-size: 0.78rem; white-space: nowrap; flex-shrink: 0; }}
+  .empty {{ color: var(--muted); font-size: 0.88rem; padding: 6px 0; }}
+  footer {{ text-align: center; margin-top: 40px; color: var(--muted); font-size: 0.74rem; }}
 </style>
 </head>
 <body>
 <header>
-  <span class="badge">📶 LAN Drop</span>
+  <span class="badge">LAN Drop</span>
   <h1>{computer_name}</h1>
 </header>
 
@@ -125,7 +116,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <div class="card">
   <form method="POST" action="/upload" enctype="multipart/form-data" id="uploadForm">
     <label class="dropzone" for="fileInput" id="dropzone">
-      <span class="icon">📤</span>
+      <span class="icon">✦</span>
       <span>แตะเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</span>
       <span class="hint">เลือกได้หลายไฟล์พร้อมกัน</span>
       <div class="selected-names" id="selectedNames"></div>
@@ -140,7 +131,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   <ul class="file-list">{received_list}</ul>
 </div>
 
-<h2>ไฟล์จาก PC (แตะเพื่อดาวน์โหลด)</h2>
+<h2>ไฟล์จาก PC · แตะเพื่อดาวน์โหลด</h2>
 <div class="card">
   <ul class="file-list">{send_list}</ul>
 </div>
