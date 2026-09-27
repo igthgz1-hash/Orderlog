@@ -1,4 +1,7 @@
 <#
+LAN Drop uninstaller for Windows.
+Copyright (c) 2026 Sevastopol. All Rights Reserved. See ..\LICENSE.
+
 Removes what install.ps1 set up: the installed copy, the Desktop shortcut,
 and the firewall rule. Run as Administrator (needed to remove the
 firewall rule).

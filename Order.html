@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Copyright (c) 2026 AKA Sevastopol. All Rights Reserved. See LICENSE. -->
+<!-- Copyright (c) 2026 Sevastopol. All Rights Reserved. See LICENSE. -->
 <html lang="th">
 <head>
     <meta charset="UTF-8">

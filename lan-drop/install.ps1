@@ -1,5 +1,6 @@
 <#
 LAN Drop installer for Windows.
+Copyright (c) 2026 Sevastopol. All Rights Reserved. See ..\LICENSE.
 
 Installs LAN Drop into %LOCALAPPDATA%\LanDrop, sets up a Python virtual
 environment with its dependencies, opens the firewall port it needs, and
@@ -17,6 +18,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Write-Host "LAN Drop Installer" -ForegroundColor Cyan
+Write-Host "Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan
+Write-Host ""
+
 function Fail($message) {
     Write-Host $message -ForegroundColor Red
     exit 1
@@ -29,11 +34,16 @@ if (-not $isAdmin) {
 
 $SourceDir = $PSScriptRoot
 $InstallDir = Join-Path $env:LOCALAPPDATA "LanDrop"
+$RepoRoot = Split-Path $SourceDir -Parent
+$LicenseSource = Join-Path $RepoRoot "LICENSE"
 
 Write-Host "Installing LAN Drop to $InstallDir ..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path (Join-Path $SourceDir "server.py") -Destination $InstallDir -Force
 Copy-Item -Path (Join-Path $SourceDir "requirements.txt") -Destination $InstallDir -Force
+if (Test-Path $LicenseSource) {
+    Copy-Item -Path $LicenseSource -Destination $InstallDir -Force
+}
 
 $python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $python) {
@@ -66,10 +76,12 @@ $shortcut.TargetPath = $venvPython
 $shortcut.Arguments = "`"$InstallDir\server.py`" --name `"$env:COMPUTERNAME`" --port $Port"
 $shortcut.WorkingDirectory = $InstallDir
 $shortcut.IconLocation = "shell32.dll,44"
-$shortcut.Description = "Start LAN Drop file receiver"
+$shortcut.Description = "Start LAN Drop file receiver (c) 2026 Sevastopol"
 $shortcut.Save()
 
 Write-Host ""
 Write-Host "Done. Double-click 'LAN Drop' on your Desktop to start the server." -ForegroundColor Green
 Write-Host "A console window will open showing a QR code and URL — scan it from your phone (same Wi-Fi network)."
 Write-Host "To remove LAN Drop later, run uninstall.ps1 from this same folder."
+Write-Host ""
+Write-Host "LAN Drop — Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan
