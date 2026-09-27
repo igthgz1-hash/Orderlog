@@ -1,5 +1,5 @@
 <#
-LAN Drop uninstaller for Windows.
+Sevastopol File Transfer — uninstaller for Windows.
 Copyright (c) 2026 Sevastopol. All Rights Reserved. See ..\LICENSE.
 
 Removes what install.ps1 set up: the installed copy, the Desktop shortcut,
@@ -10,7 +10,7 @@ firewall rule).
 $ErrorActionPreference = "SilentlyContinue"
 
 $InstallDir = Join-Path $env:LOCALAPPDATA "LanDrop"
-$shortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "LAN Drop.lnk"
+$shortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Sevastopol File Transfer.lnk"
 
 Write-Host "Removing firewall rule ..."
 Remove-NetFirewallRule -DisplayName "LanDrop"

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Rebuilds dist/LanDropSetup.exe from installer.nsi + the current server.py.
-# Run this after any change to server.py/requirements.txt/install.ps1 so the
-# packaged installer stays in sync.
+# Rebuilds "dist/Sevastopol File Transfer v1.exe" from installer.nsi + the
+# current server.py. Run this after any change to
+# server.py/requirements.txt/drive_backup.py/install.ps1 so the packaged
+# installer stays in sync.
 #
 # Requires NSIS (makensis). On Debian/Ubuntu: sudo apt-get install nsis
 # On Windows/macOS: https://nsis.sourceforge.io/Download
@@ -15,4 +16,4 @@ fi
 
 mkdir -p dist
 makensis installer.nsi
-echo "Built: dist/LanDropSetup.exe"
+echo "Built: dist/Sevastopol File Transfer v1.exe"

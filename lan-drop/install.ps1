@@ -1,8 +1,8 @@
 <#
-LAN Drop installer for Windows.
+Sevastopol File Transfer — installer for Windows.
 Copyright (c) 2026 Sevastopol. All Rights Reserved. See ..\LICENSE.
 
-Installs LAN Drop into %LOCALAPPDATA%\LanDrop, sets up a Python virtual
+Installs into %LOCALAPPDATA%\LanDrop, sets up a Python virtual
 environment with its dependencies, opens the firewall port it needs, and
 creates a Desktop shortcut to start it.
 
@@ -18,7 +18,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "LAN Drop Installer" -ForegroundColor Cyan
+Write-Host "Sevastopol File Transfer — Installer" -ForegroundColor Cyan
 Write-Host "Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan
 Write-Host ""
 
@@ -71,19 +71,19 @@ if (-not (Get-NetFirewallRule -DisplayName "LanDrop" -ErrorAction SilentlyContin
 }
 
 Write-Host "Creating Desktop shortcut ..."
-$shortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "LAN Drop.lnk"
+$shortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Sevastopol File Transfer.lnk"
 $wshShell = New-Object -ComObject WScript.Shell
 $shortcut = $wshShell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $venvPython
 $shortcut.Arguments = "`"$InstallDir\server.py`" --name `"$env:COMPUTERNAME`" --port $Port"
 $shortcut.WorkingDirectory = $InstallDir
 $shortcut.IconLocation = "shell32.dll,44"
-$shortcut.Description = "Start LAN Drop file receiver (c) 2026 Sevastopol"
+$shortcut.Description = "Start Sevastopol File Transfer (c) 2026 Sevastopol"
 $shortcut.Save()
 
 Write-Host ""
-Write-Host "Done. Double-click 'LAN Drop' on your Desktop to start the server." -ForegroundColor Green
+Write-Host "Done. Double-click 'Sevastopol File Transfer' on your Desktop to start the server." -ForegroundColor Green
 Write-Host "A console window will open showing a QR code and URL — scan it from your phone (same Wi-Fi network)."
-Write-Host "To remove LAN Drop later, run uninstall.ps1 from this same folder."
+Write-Host "To remove it later, run uninstall.ps1 from this same folder."
 Write-Host ""
-Write-Host "LAN Drop — Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan
+Write-Host "Sevastopol File Transfer — Copyright (c) 2026 Sevastopol. All Rights Reserved." -ForegroundColor Cyan
