@@ -5,7 +5,26 @@
 กับฟอร์มอัปโหลดไฟล์ในเว็บเบราว์เซอร์ ใช้ได้กับมือถือทุกยี่ห้อ (iPhone, Samsung,
 Android อื่นๆ) โดยไม่ต้องติดตั้งแอปเพิ่ม
 
-## วิธีใช้
+## ติดตั้งแบบอัตโนมัติ (แนะนำ — ทำครั้งเดียวต่อเครื่อง)
+
+**Windows:** เปิด PowerShell **แบบ Administrator** แล้วรัน (จำเป็นต้องเป็น Admin
+เพื่อเปิดพอร์ตในไฟร์วอลล์ให้อัตโนมัติ):
+```powershell
+cd lan-drop
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+.\install.ps1
+```
+จะได้ shortcut ชื่อ "LAN Drop" บนหน้า Desktop ไว้ดับเบิลคลิกเปิดใช้งานได้เลยทุกครั้ง
+โดยไม่ต้องเปิด PowerShell/พิมพ์คำสั่งอีก (ถอนการติดตั้งด้วย `.\uninstall.ps1`)
+
+**macOS / Linux:**
+```bash
+cd lan-drop
+./install.sh
+```
+จะได้คำสั่ง `lan-drop` ไว้เรียกใช้ได้จากเทอร์มินัล
+
+## วิธีใช้แบบรันเอง (ไม่ผ่านตัวติดตั้ง)
 
 ```bash
 cd lan-drop
@@ -44,3 +63,5 @@ python3 server.py --name "PC ของฉัน" --out-dir ~/Downloads/LanDrop
 ## โครงสร้างไฟล์
 
 - `server.py` — เว็บเซิร์ฟเวอร์ทั้งหมด (หน้าเว็บ + endpoint รับไฟล์ + QR code)
+- `install.ps1` / `uninstall.ps1` — ตัวติดตั้ง/ถอนการติดตั้งสำหรับ Windows
+- `install.sh` — ตัวติดตั้งสำหรับ macOS/Linux
