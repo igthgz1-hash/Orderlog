@@ -75,10 +75,21 @@ Section "Run"
       MessageBox MB_ICONEXCLAMATION "Setup failed (exit code $0). Check the details in this window (scroll up) for what went wrong — the most common cause is Python not being installed yet."
       Abort
     ${EndIf}
-    Goto launch
+    Goto copy_credentials
 
   already_installed:
     DetailPrint "Already set up on this PC — launching..."
+    Goto copy_credentials
+
+  copy_credentials:
+    ; If a credentials.json is sitting next to this .exe (i.e. you copied
+    ; both files together onto this PC), pick it up automatically so Google
+    ; Drive backup doesn't need a manual copy into %LOCALAPPDATA%\LanDrop.
+    ; token.json is never copied this way — that one is created fresh by
+    ; each PC's own one-time browser sign-in and should stay per-machine.
+    IfFileExists "$EXEDIR\credentials.json" 0 launch
+      DetailPrint "Found credentials.json next to the installer — installing it..."
+      CopyFiles /SILENT "$EXEDIR\credentials.json" "$2\credentials.json"
 
   launch:
     DetailPrint "Starting ${APP_NAME}..."
