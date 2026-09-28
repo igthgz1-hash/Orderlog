@@ -47,15 +47,26 @@ if (Test-Path $LicenseSource) {
     Copy-Item -Path $LicenseSource -Destination $InstallDir -Force
 }
 
-$python = Get-Command python -ErrorAction SilentlyContinue
-if (-not $python) {
-    Fail "Python was not found on PATH. Install Python 3 from https://www.python.org/downloads/windows/ (check 'Add python.exe to PATH' during setup), then run this installer again."
+# Prefer "python" (the common case), but fall back to the "py" launcher --
+# it's what a Python install just performed by installer.nsi in this same
+# run actually shows up as, since "py" always lands in C:\Windows (already
+# on PATH) while a brand new "python" directory isn't visible yet to this
+# already-running process tree.
+$pythonExe = "python"
+$pythonArgsPrefix = @()
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        $pythonExe = "py"
+        $pythonArgsPrefix = @("-3")
+    } else {
+        Fail "Python was not found on PATH. Install Python 3 from https://www.python.org/downloads/windows/ (check 'Add python.exe to PATH' during setup), then run this installer again."
+    }
 }
 
 $venvDir = Join-Path $InstallDir ".venv"
 if (-not (Test-Path $venvDir)) {
     Write-Host "Creating Python virtual environment ..."
-    python -m venv $venvDir
+    & $pythonExe @pythonArgsPrefix -m venv $venvDir
 }
 
 $venvPython = Join-Path $venvDir "Scripts\python.exe"

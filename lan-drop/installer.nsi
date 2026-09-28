@@ -38,21 +38,48 @@ Section "Run"
   IfFileExists "$2\.venv\Scripts\python.exe" already_installed check_python
 
   check_python:
-    ; Python itself isn't bundled in this installer (this build environment's
-    ; network policy blocks python.org, so it couldn't be fetched to embed).
-    ; Detect it's missing before attempting setup, and offer to open the
-    ; download page instead of failing deep inside install.ps1.
+    ; Python itself isn't bundled inside this .exe (this build environment's
+    ; network policy blocks python.org, so it couldn't be fetched to embed
+    ; at build time) — but the PC actually running this installer has its
+    ; own normal internet access, so download the official installer from
+    ; python.org right now and run it silently, instead of just pointing
+    ; the user at a download page. Still a single double-click overall.
     nsExec::ExecToStack 'cmd /c where python'
     Pop $4 ; exit code
     Pop $5 ; captured output (unused, but must be popped to keep the stack balanced)
-    ${If} $4 != 0
-      MessageBox MB_YESNO|MB_ICONQUESTION "Python 3 was not found on this PC — ${APP_NAME} needs it to run.$\r$\n$\r$\nOpen the Python download page now? After installing (check 'Add python.exe to PATH' during setup), run ${APP_NAME} again." IDYES open_python_page
-      Goto python_missing_end
+    ${If} $4 == 0
+      Goto do_install
+    ${EndIf}
+    nsExec::ExecToStack 'cmd /c where py'
+    Pop $4
+    Pop $5
+    ${If} $4 == 0
+      Goto do_install
+    ${EndIf}
+
+    DetailPrint "Python 3 was not found on this PC — downloading the official installer from python.org ..."
+    NSISdl::download "https://www.python.org/ftp/python/3.12.7/python-3.12.7-amd64.exe" "$TEMP\python-installer.exe"
+    Pop $6
+    ${If} $6 != "success"
+      MessageBox MB_YESNO|MB_ICONQUESTION "Could not download Python 3 automatically ($6).$\r$\n$\r$\nOpen the Python download page instead? After installing (check 'Add python.exe to PATH' during setup), run ${APP_NAME} again." IDYES open_python_page
+      Abort
       open_python_page:
         ExecShell "open" "https://www.python.org/downloads/windows/"
-      python_missing_end:
+        Abort
+    ${EndIf}
+
+    DetailPrint "Installing Python 3 (this can take a minute) ..."
+    ExecWait '"$TEMP\python-installer.exe" /quiet InstallAllUsers=1 PrependPath=1 Include_launcher=1' $7
+    Delete "$TEMP\python-installer.exe"
+    ${If} $7 != 0
+      MessageBox MB_ICONEXCLAMATION "Python 3 installation failed (exit code $7). Please install it manually from https://www.python.org/downloads/windows/ and run ${APP_NAME} again."
       Abort
     ${EndIf}
+    ; The "python" command itself isn't visible to this already-running
+    ; process yet (its PATH was loaded before the install just added a new
+    ; directory to the registry) — install.ps1 falls back to the "py"
+    ; launcher instead, which the installer always places in C:\Windows,
+    ; a folder that's already on every process's PATH.
     Goto do_install
 
   do_install:
