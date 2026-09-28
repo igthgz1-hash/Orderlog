@@ -1,0 +1,10 @@
+zeroconf>=0.131.0
+cryptography>=41.0.0
+
+# Windows only, for the experimental BLE beacon (ble_beacon_windows.py).
+# Needed for AirDrop's Share Sheet to show this PC at all — plain mDNS
+# alone is not enough. Not installable/needed on Linux or macOS.
+winrt-Windows.Devices.Bluetooth.Advertisement; sys_platform == "win32"
+winrt-Windows.Storage.Streams; sys_platform == "win32"
+winrt-Windows.Foundation; sys_platform == "win32"
+winrt-Windows.Foundation.Collections; sys_platform == "win32"
