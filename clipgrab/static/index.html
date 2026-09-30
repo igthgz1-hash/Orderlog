@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipGrab – ดาวน์โหลดคลิป</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--fg:#1d2030;--mut:#6b7186;--pri:#4f46e5;--bd:#e2e4ee;--err:#dc2626}
+@media(prefers-color-scheme:dark){:root{--bg:#12131a;--card:#1c1e29;--fg:#eceef6;--mut:#9aa0b8;--bd:#2c2f40;--pri:#818cf8}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Noto Sans Thai",sans-serif;padding:16px}
+main{max-width:640px;margin:32px auto}
+h1{margin:0 0 4px}p.sub{color:var(--mut);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:16px}
+.row{display:flex;gap:8px}input[type=text]{flex:1;min-width:0;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);font-size:16px}
+button{padding:12px 18px;border:0;border-radius:10px;background:var(--pri);color:#fff;font-size:16px;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+.meta{display:flex;gap:12px;margin-bottom:14px}.meta img{width:140px;border-radius:8px;object-fit:cover;align-self:flex-start}
+.meta b{display:block;margin-bottom:4px}.meta span{color:var(--mut);font-size:14px}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:10px 0}
+.opts label{border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center;cursor:pointer}
+.opts input{display:none}.opts label:has(input:checked){border-color:var(--pri);background:color-mix(in srgb,var(--pri) 15%,transparent);font-weight:600}
+select{padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--fg)}
+.bar{height:10px;background:var(--bd);border-radius:6px;overflow:hidden;margin:12px 0 6px}.bar i{display:block;height:100%;width:0;background:var(--pri);transition:width .3s}
+.err{color:var(--err)}.hide{display:none}small{color:var(--mut)}
+</style>
+</head>
+<body>
+<main>
+  <h1>⬇️ ClipGrab</h1>
+  <p class="sub">วางลิงก์คลิปจาก YouTube, TikTok, Facebook, Instagram, X ฯลฯ แล้วเลือกความคมชัดหรือโหลดเฉพาะเสียง</p>
+
+  <div class="card">
+    <div class="row">
+      <input id="url" type="text" placeholder="วางลิงก์ที่นี่ https://..." autocomplete="off">
+      <button id="check">ตรวจสอบ</button>
+    </div>
+    <p id="msg" class="err hide"></p>
+  </div>
+
+  <div id="panel" class="card hide">
+    <div class="meta"><img id="thumb" alt=""><div><b id="title"></b><span id="info"></span></div></div>
+    <div><b>คุณภาพ</b></div>
+    <div class="opts" id="opts"></div>
+    <div id="audioFmt" class="hide">รูปแบบไฟล์เสียง:
+      <select id="afmt"><option value="mp3">MP3</option><option value="m4a">M4A</option><option value="opus">Opus</option><option value="wav">WAV</option></select>
+    </div>
+    <p id="noff" class="hide"><small>⚠ ไม่พบ ffmpeg บนเครื่อง: ระบบจะโหลดไฟล์รวมที่ดีที่สุดที่มี และไม่แปลงเป็น MP3</small></p>
+    <button id="go" style="width:100%;margin-top:10px">ดาวน์โหลด</button>
+    <div id="prog" class="hide"><div class="bar"><i id="fill"></i></div><small id="ptxt"></small></div>
+  </div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const post=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||'เกิดข้อผิดพลาด');return j});
+const fmtT=s=>s?`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`:'';
+function err(t){$('msg').textContent=t;$('msg').classList.toggle('hide',!t)}
+
+$('check').onclick=async()=>{
+  err('');$('panel').classList.add('hide');$('check').disabled=true;$('check').textContent='กำลังตรวจสอบ...';
+  try{
+    const d=await post('/api/info',{url:$('url').value.trim()});
+    $('title').textContent=d.title||'(ไม่มีชื่อ)';
+    $('info').textContent=[d.uploader,fmtT(d.duration)].filter(Boolean).join(' • ');
+    $('thumb').src=d.thumbnail||'';$('thumb').classList.toggle('hide',!d.thumbnail);
+    const q=[['best','ต้นฉบับ (สูงสุด)']];
+    [1080,720,480,360].forEach(h=>q.push([String(h),h+'p']));
+    q.push(['audio','🎵 เสียงอย่างเดียว']);
+    $('opts').innerHTML=q.map(([v,l],i)=>`<label><input type="radio" name="q" value="${v}" ${i?'':'checked'}>${l}</label>`).join('');
+    document.querySelectorAll('[name=q]').forEach(r=>r.onchange=()=>$('audioFmt').classList.toggle('hide',r.value!=='audio'||!r.checked));
+    $('audioFmt').classList.add('hide');$('noff').classList.toggle('hide',d.ffmpeg);
+    $('prog').classList.add('hide');$('panel').classList.remove('hide');
+  }catch(e){err(e.message)}
+  $('check').disabled=false;$('check').textContent='ตรวจสอบ';
+};
+
+$('go').onclick=async()=>{
+  err('');$('go').disabled=true;$('prog').classList.remove('hide');$('fill').style.width='0';$('ptxt').textContent='เริ่มต้น...';
+  try{
+    const quality=document.querySelector('[name=q]:checked').value;
+    const {id}=await post('/api/download',{url:$('url').value.trim(),quality,audio_format:$('afmt').value});
+    while(true){
+      await new Promise(r=>setTimeout(r,800));
+      const p=await fetch('/api/progress/'+id).then(r=>r.json());
+      $('fill').style.width=(p.progress||0)+'%';
+      if(p.status==='downloading')$('ptxt').textContent=`กำลังดาวน์โหลด ${p.progress||0}%`+(p.speed?` • ${(p.speed/1048576).toFixed(1)} MB/s`:'');
+      else if(p.status==='processing')$('ptxt').textContent='กำลังประมวลผลไฟล์...';
+      else if(p.status==='error')throw new Error(p.error);
+      else if(p.status==='done'){$('ptxt').textContent='เสร็จแล้ว ✓ '+p.file;location.href='/api/file/'+id;break}
+    }
+  }catch(e){err(e.message);$('prog').classList.add('hide')}
+  $('go').disabled=false;
+};
+</script>
+</body>
+</html>
