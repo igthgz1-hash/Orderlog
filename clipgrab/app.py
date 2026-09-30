@@ -3,6 +3,7 @@ import ipaddress
 import os
 import shutil
 import socket
+import sys
 import tempfile
 import threading
 import time
@@ -12,10 +13,26 @@ from urllib.parse import urlparse
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 import yt_dlp
 
-app = Flask(__name__, static_folder="static")
+BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "static"))
 DOWNLOAD_DIR = os.path.join(tempfile.gettempdir(), "clipgrab")
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-HAS_FFMPEG = shutil.which("ffmpeg") is not None
+
+
+def find_ffmpeg():
+    """หา ffmpeg จากระบบก่อน ถ้าไม่มีใช้ตัวที่มากับ imageio-ffmpeg (ฝังในตัวติดตั้ง)"""
+    path = shutil.which("ffmpeg")
+    if path:
+        return path
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+FFMPEG = find_ffmpeg()
+HAS_FFMPEG = FFMPEG is not None
 JOB_TTL = 60 * 60  # ลบไฟล์เก่าหลัง 1 ชั่วโมง
 
 jobs = {}
@@ -81,6 +98,8 @@ def run_job(jid, url, quality, audio_fmt):
         "progress_hooks": [hook],
         "max_filesize": 4 * 1024**3,
     }
+    if HAS_FFMPEG:
+        opts["ffmpeg_location"] = FFMPEG
     if quality == "audio":
         if HAS_FFMPEG:
             opts["postprocessors"] = [{
@@ -164,7 +183,22 @@ def file(jid):
     return send_file(os.path.join(j["dir"], j["file"]), as_attachment=True, download_name=j["file"])
 
 
+def free_port(preferred):
+    for port in range(preferred, preferred + 20):
+        with socket.socket() as sock:
+            if sock.connect_ex(("127.0.0.1", port)) != 0:
+                return port
+    return preferred
+
+
 if __name__ == "__main__":
+    import webbrowser
+
     if not HAS_FFMPEG:
-        print("⚠ ไม่พบ ffmpeg: จะรวมภาพ+เสียง/แปลงเป็น MP3 ไม่ได้ (ติดตั้ง ffmpeg เพื่อคุณภาพสูงสุด)")
-    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", 5000)))
+        print("⚠ ไม่พบ ffmpeg: จะรวมภาพ+เสียง/แปลงเป็น MP3 ไม่ได้")
+    port = free_port(int(os.environ.get("PORT", 5000)))
+    url = f"http://127.0.0.1:{port}"
+    print(f"ClipGrab กำลังทำงานที่ {url}\n(ปิดหน้าต่างนี้เพื่อออกจากโปรแกรม)")
+    if not os.environ.get("NO_BROWSER"):
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    app.run(host="127.0.0.1", port=port)

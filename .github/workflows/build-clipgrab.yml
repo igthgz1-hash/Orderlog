@@ -1,0 +1,53 @@
+name: Build ClipGrab installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["clipgrab-v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: ClipGrab-Windows
+          - os: macos-14      # Apple Silicon (M1/M2/M3)
+            name: ClipGrab-Mac-AppleSilicon
+          - os: macos-13      # Intel
+            name: ClipGrab-Mac-Intel
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: clipgrab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pyinstaller
+      - run: pyinstaller -y ClipGrab.spec
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/ClipGrab.exe -DestinationPath ${{ matrix.name }}.zip
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          printf '#!/bin/bash\ncd "$(dirname "$0")"\nxattr -d com.apple.quarantine ./ClipGrab 2>/dev/null\nchmod +x ./ClipGrab\n./ClipGrab\n' > dist/OpenClipGrab.command
+          chmod +x dist/OpenClipGrab.command dist/ClipGrab
+          cd dist && zip -r ../${{ matrix.name }}.zip ClipGrab OpenClipGrab.command
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: clipgrab/${{ matrix.name }}.zip
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: clipgrab/${{ matrix.name }}.zip
